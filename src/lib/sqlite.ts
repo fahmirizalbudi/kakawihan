@@ -3,19 +3,24 @@ import type { Database } from 'sql.js';
 
 const DB_STORE_KEY = 'sqlite_db_data';
 const IDB_NAME = 'kakawihan_app_db';
+const IDB_VERSION = 2;
 const IDB_STORE = 'sqlite_store';
+const IDB_AUDIO_STORE = 'audio_blobs';
 
 let dbInstance: Database | null = null;
 let initPromise: Promise<Database> | null = null;
 
-// IndexedDB Helper untuk persistensi binary SQLite
+// IndexedDB Helper untuk persistensi binary SQLite dan audio blobs
 function openIdb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(IDB_NAME, 1);
+    const request = indexedDB.open(IDB_NAME, IDB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(IDB_STORE)) {
         db.createObjectStore(IDB_STORE);
+      }
+      if (!db.objectStoreNames.contains(IDB_AUDIO_STORE)) {
+        db.createObjectStore(IDB_AUDIO_STORE);
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -56,7 +61,50 @@ export async function saveDbToIdb(): Promise<void> {
   }
 }
 
-// Inisialisasi sql.js
+// Audio Blob Persistence
+export async function saveAudioBlob(key: string, blob: Blob): Promise<void> {
+  const idb = await openIdb();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(IDB_AUDIO_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_AUDIO_STORE);
+    const req = store.put(blob, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getAudioBlob(key: string): Promise<Blob | null> {
+  try {
+    const idb = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = idb.transaction(IDB_AUDIO_STORE, 'readonly');
+      const store = tx.objectStore(IDB_AUDIO_STORE);
+      const req = store.get(key);
+      req.onsuccess = () => resolve((req.result as Blob) ?? null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('Gagal membaca audio blob dari IndexedDB:', err);
+    return null;
+  }
+}
+
+export async function deleteAudioBlob(key: string): Promise<void> {
+  try {
+    const idb = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = idb.transaction(IDB_AUDIO_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_AUDIO_STORE);
+      const req = store.delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('Gagal menghapus audio blob dari IndexedDB:', err);
+  }
+}
+
+// Inisialisasi sql.js dan skema tabel SQLite
 export async function getSqliteDb(): Promise<Database> {
   if (dbInstance) return dbInstance;
   if (initPromise) return initPromise;
@@ -65,7 +113,6 @@ export async function getSqliteDb(): Promise<Database> {
     const SQL = await initSqlJs({
       locateFile: (file) => {
         // Layani file WASM lokal dari folder public (/sql-wasm-browser.wasm atau /sql-wasm.wasm)
-        // untuk mendukung fungsionalitas PWA offline sepenuhnya
         return `/${file}`;
       },
     });
@@ -77,14 +124,35 @@ export async function getSqliteDb(): Promise<Database> {
       dbInstance = new SQL.Database();
     }
 
+    // Inisialisasi skema tabel jika belum ada
+    dbInstance.run(`
+      CREATE TABLE IF NOT EXISTS tracks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        artist TEXT DEFAULT 'Unknown Artist',
+        album TEXT DEFAULT 'Unknown Album',
+        duration REAL DEFAULT 0,
+        file_name TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        mime_type TEXT NOT NULL,
+        blob_key TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await saveDbToIdb();
     return dbInstance;
   })();
 
   return initPromise;
 }
 
-// Helper query dari sqlite-docs.md
-export function execQuery<T = Record<string, unknown>>(db: Database, sql: string, params?: (string | number | null | Uint8Array)[]): T[] {
+// Helper query
+export function execQuery<T = Record<string, unknown>>(
+  db: Database,
+  sql: string,
+  params?: (string | number | null | Uint8Array)[]
+): T[] {
   const results = params ? db.exec(sql, params) : db.exec(sql);
   if (!results.length) return [];
   const { columns, values } = results[0];

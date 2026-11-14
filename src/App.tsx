@@ -3,11 +3,12 @@ import { PlaylistScreen } from './components/PlaylistScreen';
 import { TracksScreen } from './components/TracksScreen';
 import { useMobileDetection } from './hooks/useMobileDetection';
 import { Smartphone, ShieldAlert, QrCode } from 'lucide-react';
+import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
 
 export default function App() {
   const { isMobileDevice } = useMobileDetection();
-  // Default to 'playlists' screen (sesuai gambar yang diunggah)
-  const [currentScreen, setCurrentScreen] = useState<'playlists' | 'tracks'>('playlists');
+  // Default to 'tracks' screen (fokus ke integrasi tracks SQLite dan pemutar lagu)
+  const [currentScreen, setCurrentScreen] = useState<'playlists' | 'tracks'>('tracks');
 
   // Strict Mobile Check: JIKA BUKAN PERANGKAT MOBILE, BLOKIR AKSES
   if (!isMobileDevice) {
@@ -72,14 +73,16 @@ export default function App() {
     );
   }
 
-  // JIKA PERANGKAT MOBILE: TAMPILKAN APLIKASI SECARA PENUH TANPA STATUS BAR
+  // JIKA PERANGKAT MOBILE: TAMPILKAN APLIKASI SECARA PENUH
   return (
-    <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-black text-white overflow-hidden font-['Montserrat',sans-serif]">
-      {currentScreen === 'tracks' ? (
-        <TracksScreen onSwitchToPlaylists={() => setCurrentScreen('playlists')} />
-      ) : (
-        <PlaylistScreen onSwitchToTracks={() => setCurrentScreen('tracks')} />
-      )}
-    </main>
+    <AudioPlayerProvider>
+      <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-black text-white overflow-hidden font-['Montserrat',sans-serif]">
+        {currentScreen === 'tracks' ? (
+          <TracksScreen onSwitchToPlaylists={() => setCurrentScreen('playlists')} />
+        ) : (
+          <PlaylistScreen onSwitchToTracks={() => setCurrentScreen('tracks')} />
+        )}
+      </main>
+    </AudioPlayerProvider>
   );
 }

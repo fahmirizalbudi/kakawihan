@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import {
   ScreenLayout,
@@ -10,6 +9,7 @@ import {
   FeaturedCard,
   PlaylistItem,
 } from './ui';
+import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 
 interface PlaylistData {
   id: string;
@@ -44,7 +44,7 @@ interface PlaylistScreenProps {
 }
 
 export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { currentTrack, isPlaying, togglePlay, nextTrack, prevTrack } = useAudioPlayer();
 
   return (
     <ScreenLayout>
@@ -85,10 +85,11 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
 
       {/* Mini Player */}
       <MiniPlayer
-        trackTitle="Crystal Dreams"
-        coverImage="/covers/crystal-dreams.jpg"
+        trackTitle={currentTrack ? currentTrack.title : 'Belum ada lagu'}
         isPlaying={isPlaying}
-        onTogglePlay={() => setIsPlaying(!isPlaying)}
+        onTogglePlay={togglePlay}
+        onPrev={prevTrack}
+        onNext={nextTrack}
       />
 
       {/* Bottom Navigation */}
