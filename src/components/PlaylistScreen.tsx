@@ -44,7 +44,16 @@ interface PlaylistScreenProps {
 }
 
 export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
-  const { currentTrack, isPlaying, togglePlay, nextTrack, prevTrack } = useAudioPlayer();
+  const {
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    seek,
+    togglePlay,
+    nextTrack,
+    prevTrack,
+  } = useAudioPlayer();
 
   return (
     <ScreenLayout>
@@ -52,7 +61,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
       <ScreenHeader title="Playlists" />
 
       {/* Scrollable Content */}
-      <main className="flex-1 min-h-0 overflow-y-auto px-5 pt-3 pb-4 scrollbar-none overscroll-contain">
+      <main className="flex-1 min-h-0 overflow-y-auto px-5 pt-2 pb-4 scrollbar-none overscroll-contain">
         {/* Featured Cards */}
         <div className="grid grid-cols-2 gap-3.5">
           <FeaturedCard title="Favorites" subtitle="8 tracks" />
@@ -61,17 +70,18 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
 
         {/* Sort Bar */}
         <SortBar
-          className="mt-6 mb-4"
+          className="mt-5 mb-3"
           rightContent={
             <ActionButton
-              icon={<Plus className="w-5 h-5 stroke-[2.8]" />}
-              label="Add Playlist"
+              icon={<Plus className="w-3.5 h-3.5 stroke-[2.5]" />}
+              label="Playlist"
+              showLabel
             />
           }
         />
 
         {/* Playlist List */}
-        <div className="space-y-4">
+        <div className="space-y-1">
           {PLAYLISTS.map((item) => (
             <PlaylistItem
               key={item.id}
@@ -83,10 +93,18 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
         </div>
       </main>
 
-      {/* Mini Player */}
+      {/* Mini Player with Seeker Slider */}
       <MiniPlayer
         trackTitle={currentTrack ? currentTrack.title : 'Belum ada lagu'}
+        subtitle={
+          currentTrack
+            ? `${(currentTrack.file_size / (1024 * 1024)).toFixed(1)} MB`
+            : undefined
+        }
         isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={seek}
         onTogglePlay={togglePlay}
         onPrev={prevTrack}
         onNext={nextTrack}

@@ -76,7 +76,7 @@ export default function App() {
   // JIKA PERANGKAT MOBILE: TAMPILKAN APLIKASI SECARA PENUH
   return (
     <AudioPlayerProvider>
-      <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-black text-white overflow-hidden font-['Montserrat',sans-serif]">
+      <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-[#101012] text-white overflow-hidden font-['Montserrat',sans-serif]">
         {currentScreen === 'tracks' ? (
           <TracksScreen onSwitchToPlaylists={() => setCurrentScreen('playlists')} />
         ) : (

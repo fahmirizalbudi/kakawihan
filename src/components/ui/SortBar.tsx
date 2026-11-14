@@ -42,11 +42,11 @@ export function SortBar({
       <button
         type="button"
         onClick={onSortClick}
-        className="flex items-center gap-1.5 text-white active:opacity-80 transition-opacity cursor-pointer"
+        className="flex items-center gap-1.5 text-[#8e8e93] hover:text-white active:opacity-80 transition-opacity cursor-pointer text-[13.5px] font-medium"
       >
         <SortIcon />
-        <span className="font-semibold text-[14.5px] tracking-tight">{label}</span>
-        <ChevronDown className="w-3.5 h-3.5 text-[#8e8e93] ml-0.5 stroke-[2.5]" />
+        <span className="tracking-tight">{label}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-[#8e8e93] ml-0.5 stroke-[2]" />
       </button>
 
       {rightContent && (

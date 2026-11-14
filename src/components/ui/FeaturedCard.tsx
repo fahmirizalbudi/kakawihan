@@ -25,18 +25,18 @@ export function FeaturedCard({
     <div className={className}>
       <div
         onClick={onClick}
-        className="bg-[#161618] hover:bg-[#1c1c20] active:scale-[0.98] transition-all rounded-[22px] h-[136px] relative flex flex-col items-center justify-center p-3 cursor-pointer overflow-hidden border border-white/[0.04] shadow-sm"
+        className="bg-[#1c1c1e] hover:bg-[#242428] active:scale-[0.98] transition-all rounded-[18px] h-[120px] relative flex flex-col items-center justify-center p-3 cursor-pointer overflow-hidden"
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
       >
         {icon ?? (
-          <Music className="w-14 h-14 text-white/[0.10] absolute stroke-[1.8]" />
+          <Music className="w-12 h-12 text-white/[0.08] absolute stroke-[1.8]" />
         )}
-        <span className="text-white font-semibold text-[14.5px] z-10 text-center leading-snug">
+        <span className="text-white font-medium text-[14px] z-10 text-center leading-snug">
           {title}
         </span>
       </div>
-      <div className="text-center text-[12px] text-[#8e8e93] font-medium mt-2">
+      <div className="text-center text-[12px] text-[#8e8e93] mt-1.5">
         {subtitle}
       </div>
     </div>

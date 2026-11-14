@@ -9,6 +9,10 @@
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
+  *, *::before, *::after, input, button, select, textarea {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  }
+
   html, body, #root {
     height: 100%;
     height: 100dvh;
@@ -18,11 +22,11 @@
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: #0c0c0c;
+    background-color: #101012;
   }
 
   body {
-    background-color: #0c0c0c;
+    background-color: #101012;
     color: #ffffff;
     overflow: hidden;
     position: fixed;
@@ -30,6 +34,49 @@
     height: 100%;
     height: 100dvh;
   }
+}
+
+/* Custom flat range slider styling */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  background-color: #323236;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease;
+}
+
+input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.25);
+  background: #0061FE;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+input[type='range']:active::-moz-range-thumb {
+  background: #0061FE;
 }
 
 /* Custom scrollbars */

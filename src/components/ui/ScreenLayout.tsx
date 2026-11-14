@@ -13,7 +13,7 @@ export interface ScreenLayoutProps {
 export function ScreenLayout({ children, className = '' }: ScreenLayoutProps) {
   return (
     <div
-      className={`fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-[#0c0c0c] text-white flex flex-col select-none overflow-hidden font-['Montserrat',sans-serif] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] ${className}`}
+      className={`fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-[#101012] text-white flex flex-col select-none overflow-hidden font-['Montserrat',sans-serif] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] ${className}`}
     >
       {children}
     </div>

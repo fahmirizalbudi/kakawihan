@@ -1,11 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   Shuffle,
   Play,
-  Plus,
-  Music,
   FolderOpen,
-  Sparkles,
   Trash2,
   X,
   FileAudio,
@@ -14,7 +11,6 @@ import {
   ScreenLayout,
   ScreenHeader,
   SortBar,
-  ActionButton,
   MiniPlayer,
   BottomNav,
   TrackItem,
@@ -33,12 +29,14 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     isPlaying,
     isLoading,
     isScanning,
+    currentTime,
+    duration,
+    seek,
     playTrack,
     togglePlay,
     nextTrack,
     prevTrack,
     scanAudioFiles,
-    seedDemoTrack,
     deleteTrack,
   } = useAudioPlayer();
 
@@ -46,28 +44,71 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<Track | null>(null);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Handle files selected from phone file picker
-  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle files selected from folder picker
+  const handleFolderSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     try {
       const added = await scanAudioFiles(files);
-      setScanMessage(`Berhasil menambahkan ${added} lagu ke SQLite`);
+      if (added > 0) {
+        setScanMessage(`Berhasil menambahkan ${added} lagu dari folder`);
+      } else {
+        setScanMessage('Tidak ada file audio (.mp3, .wav, .m4a, dll) di folder ini.');
+      }
       setTimeout(() => setScanMessage(null), 3500);
     } catch {
-      setScanMessage('Gagal memindai beberapa file audio.');
+      setScanMessage('Gagal memindai file audio dari folder.');
       setTimeout(() => setScanMessage(null), 3500);
     } finally {
-      // Reset input value so same files can be re-selected if needed
       e.target.value = '';
     }
   };
 
-  const handleTriggerScan = () => {
-    fileInputRef.current?.click();
+  // Scan 1 folder
+  const handleScanFolder = async () => {
+    if ('showDirectoryPicker' in window) {
+      try {
+        // @ts-expect-error File System Access API
+        const dirHandle = await window.showDirectoryPicker();
+        const audioFiles: File[] = [];
+
+        async function scanDirectory(handle: any) {
+          for await (const entry of handle.values()) {
+            if (entry.kind === 'file') {
+              const file = await entry.getFile();
+              if (
+                file.type.startsWith('audio/') ||
+                /\.(mp3|wav|ogg|m4a|aac|flac|weba)$/i.test(file.name)
+              ) {
+                audioFiles.push(file);
+              }
+            } else if (entry.kind === 'directory') {
+              await scanDirectory(entry);
+            }
+          }
+        }
+
+        await scanDirectory(dirHandle);
+
+        if (audioFiles.length > 0) {
+          const added = await scanAudioFiles(audioFiles);
+          setScanMessage(`Berhasil menambahkan ${added} lagu dari folder "${dirHandle.name}"`);
+          setTimeout(() => setScanMessage(null), 3500);
+        } else {
+          setScanMessage(`Tidak ada file audio di folder "${dirHandle.name}".`);
+          setTimeout(() => setScanMessage(null), 3500);
+        }
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+        // Fallback to folder input
+      }
+    }
+
+    folderInputRef.current?.click();
   };
 
   const handleShuffle = () => {
@@ -81,139 +122,183 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     playTrack(tracks[0]);
   };
 
-  // Sort tracks
-  const sortedTracks = [...tracks].sort((a, b) => {
-    return sortAsc
-      ? a.title.localeCompare(b.title)
-      : b.title.localeCompare(a.title);
-  });
+  // Sorted tracks
+  const sortedTracks = useMemo(() => {
+    return [...tracks].sort((a, b) =>
+      sortAsc
+        ? a.title.localeCompare(b.title)
+        : b.title.localeCompare(a.title)
+    );
+  }, [tracks, sortAsc]);
 
   return (
     <ScreenLayout>
-      {/* Hidden File Input for scanning audio files from phone */}
+      {/* Hidden Folder Input for scanning 1 whole folder */}
       <input
-        ref={fileInputRef}
+        ref={folderInputRef}
         type="file"
-        accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.weba"
+        // @ts-expect-error webkitdirectory is standard for folder upload in modern browsers
+        webkitdirectory=""
+        directory=""
         multiple
         className="hidden"
-        onChange={handleFilesSelected}
+        onChange={handleFolderSelected}
       />
 
-      {/* Header */}
+      {/* Screen Header */}
       <ScreenHeader title="Tracks" />
 
-      {/* Sort & Action Bar */}
-      <SortBar
-        className="px-5 pt-2 pb-4 shrink-0 bg-[#0c0c0c] z-20"
-        label={sortAsc ? 'Name (A-Z)' : 'Name (Z-A)'}
-        onSortClick={() => setSortAsc(!sortAsc)}
-        rightContent={
-          <div className="flex items-center gap-2">
-            <ActionButton
-              icon={<Shuffle className="w-4 h-4 stroke-[2.2]" />}
-              label="Shuffle"
-              onClick={handleShuffle}
-            />
-            <ActionButton
-              icon={<Play className="w-4 h-4 fill-white text-white ml-0.5" />}
-              label="Play all"
-              onClick={handlePlayAll}
-            />
-            <ActionButton
-              icon={<Plus className="w-4 h-4 stroke-[2.5]" />}
-              label="Scan Lagu dari HP"
-              onClick={handleTriggerScan}
-            />
-          </div>
-        }
-      />
+      {/* Action Row: Scan Folder & Shuffle */}
+      <div className="flex items-center gap-2.5 px-5 pt-1 pb-2 shrink-0">
+        <button
+          type="button"
+          onClick={handleScanFolder}
+          className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+        >
+          <FolderOpen className="w-4 h-4 stroke-[2]" />
+          <span>Scan Folder</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleShuffle}
+          disabled={tracks.length === 0}
+          className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center gap-1.5 disabled:opacity-40 active:scale-95 transition-all cursor-pointer"
+        >
+          <Shuffle className="w-4 h-4 stroke-[2]" />
+          <span>Shuffle</span>
+        </button>
+      </div>
 
       {/* Toast Notification */}
       {scanMessage && (
-        <div className="mx-5 mb-2 px-3.5 py-2 rounded-xl bg-[#1e1e24] border border-white/10 text-xs text-slate-200 flex items-center justify-between shadow-lg animate-in fade-in duration-200">
+        <div className="mx-5 mb-2 px-3.5 py-2 rounded-xl bg-[#1c1c1f] text-xs text-slate-200 flex items-center justify-between shadow-lg animate-in fade-in duration-200">
           <span>{scanMessage}</span>
           <button
             type="button"
             onClick={() => setScanMessage(null)}
-            className="text-slate-400 hover:text-white ml-2 p-0.5"
+            className="text-[#8e8e93] hover:text-white ml-2 p-0.5"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Main Track List Container */}
-      <main className="flex-1 min-h-0 overflow-y-auto px-5 space-y-4 pb-4 overscroll-contain scrollbar-none">
+      {/* Sort Bar (only shown when tracks exist) */}
+      {tracks.length > 0 && (
+        <SortBar
+          className="px-5 pt-1 pb-2 shrink-0"
+          label={sortAsc ? 'Name (A-Z)' : 'Name (Z-A)'}
+          onSortClick={() => setSortAsc(!sortAsc)}
+          rightContent={
+            <button
+              type="button"
+              onClick={handlePlayAll}
+              className="h-8 px-3 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[12.5px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-white text-white" />
+              <span>Play all</span>
+            </button>
+          }
+        />
+      )}
+
+      {/* Main Track List / Empty State Container */}
+      <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-48 text-[#8e8e93] text-sm">
+          <div className="flex-1 flex flex-col items-center justify-center text-[#8e8e93] text-sm py-12">
             <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
             <span>Memuat database SQLite...</span>
           </div>
         ) : isScanning ? (
-          <div className="flex flex-col items-center justify-center h-48 text-[#8e8e93] text-sm">
-            <div className="w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full animate-spin mb-3" />
-            <span className="text-white font-medium">Memindai & menyimpan lagu ke SQLite...</span>
-            <span className="text-xs text-slate-400 mt-1">Harap tunggu sebentar</span>
+          <div className="flex-1 flex flex-col items-center justify-center text-[#8e8e93] text-sm py-12">
+            <div className="w-6 h-6 border-2 border-[#0061FE] border-t-transparent rounded-full animate-spin mb-3" />
+            <span className="text-white font-medium">Memindai folder audio ke SQLite...</span>
+            <span className="text-xs text-[#8e8e93] mt-1">Harap tunggu sebentar</span>
           </div>
-        ) : sortedTracks.length === 0 ? (
-          /* Empty State */
-          <div className="bg-[#141416] border border-white/[0.06] rounded-[24px] p-6 text-center my-4 flex flex-col items-center shadow-lg">
-            <div className="w-14 h-14 rounded-2xl bg-[#1f1f24] border border-white/10 flex items-center justify-center text-white mb-4 shadow">
-              <Music className="w-7 h-7 stroke-[1.8]" />
+        ) : tracks.length === 0 ? (
+          /* Empty State - Flat style inspired by screenshot */
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-8 px-4 my-auto select-none">
+            {/* Flat Document outline icon with plus sign */}
+            <div className="w-16 h-20 text-[#3a3a3e] mb-5">
+              <svg
+                className="w-full h-full"
+                viewBox="0 0 64 80"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  d="M10 2C5.58 2 2 5.58 2 10V70C2 74.42 5.58 78 10 78H54C58.42 78 62 74.42 62 70V22L42 2H10Z"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M42 2V22H62"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M32 38V54M24 46H40"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
 
-            <h3 className="text-base font-bold text-white mb-1.5 tracking-tight">
-              Belum Ada Lagu di SQLite
+            <h3 className="text-[16.5px] font-medium text-white mb-1 tracking-tight">
+              Belum Ada Lagu
             </h3>
-            <p className="text-xs text-[#8e8e93] max-w-[270px] leading-relaxed mb-5">
-              Pindai dan tambahkan file audio (.mp3, .m4a, .wav) langsung dari HP Anda ke database lokal.
+            <p className="text-[13px] text-[#8e8e93] max-w-[260px] leading-relaxed mb-6">
+              Pindai folder musik dari perangkat Anda untuk menambahkan lagu
             </p>
 
-            <div className="flex flex-col w-full gap-2.5">
-              <button
-                type="button"
-                onClick={handleTriggerScan}
-                className="w-full py-3 px-4 rounded-xl bg-white text-black font-semibold text-sm flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer shadow-md hover:bg-slate-100"
-              >
-                <FolderOpen className="w-4 h-4" />
-                <span>Pindai Lagu dari HP</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={seedDemoTrack}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#1e1e24] hover:bg-[#25252c] text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-transform cursor-pointer border border-white/10"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Muat Lagu Contoh (Demo Chime)</span>
-              </button>
-            </div>
+            {/* Flat Blue Action Button - unified size, not oversized */}
+            <button
+              type="button"
+              onClick={handleScanFolder}
+              className="h-9 px-5 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
+            >
+              <FolderOpen className="w-4 h-4" />
+              <span>Scan Folder Lagu</span>
+            </button>
           </div>
         ) : (
           /* Track Items List */
-          sortedTracks.map((track) => (
-            <TrackItem
-              key={track.id}
-              title={track.title}
-              isActive={currentTrack?.id === track.id}
-              onClick={() => playTrack(track)}
-              onOptions={() => setSelectedTrackForOptions(track)}
-            />
-          ))
+          <div className="space-y-1">
+            {sortedTracks.map((track) => (
+              <TrackItem
+                key={track.id}
+                title={track.title}
+                subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB • ${track.file_name.split('.').pop()?.toUpperCase() || 'AUDIO'}`}
+                isActive={currentTrack?.id === track.id}
+                onClick={() => playTrack(track)}
+                onOptions={() => setSelectedTrackForOptions(track)}
+              />
+            ))}
+          </div>
         )}
       </main>
 
-      {/* Floating Mini Player */}
+      {/* Floating Flat Mini Player with Seeker Slider */}
       <MiniPlayer
         trackTitle={currentTrack ? currentTrack.title : 'Belum ada lagu'}
+        subtitle={
+          currentTrack
+            ? `${(currentTrack.file_size / (1024 * 1024)).toFixed(1)} MB`
+            : undefined
+        }
         isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={seek}
         onTogglePlay={togglePlay}
         onPrev={prevTrack}
         onNext={nextTrack}
       />
 
-      {/* Fixed Bottom Navigation */}
+      {/* Fixed Bottom Navigation (Playlists & Tracks) */}
       <BottomNav
         activeTab="tracks"
         onChangeTab={(tab) => {
@@ -223,20 +308,20 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
 
       {/* Track Options Modal / Bottom Sheet */}
       {selectedTrackForOptions && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#18181b] border-t border-white/10 rounded-t-[28px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
             {/* Modal Drag handle */}
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
 
-            <div className="flex items-center gap-3.5 mb-5 pb-4 border-b border-white/[0.08]">
-              <div className="w-12 h-12 rounded-[14px] bg-[#222228] border border-white/10 flex items-center justify-center text-white shrink-0">
-                <FileAudio className="w-6 h-6 stroke-[1.8]" />
+            <div className="flex items-center gap-3.5 mb-5 pb-4">
+              <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
+                <FileAudio className="w-5 h-5 stroke-[2]" />
               </div>
               <div className="min-w-0">
-                <h4 className="text-white font-semibold text-sm truncate tracking-tight">
+                <h4 className="text-white font-medium text-[14.5px] truncate tracking-tight">
                   {selectedTrackForOptions.title}
                 </h4>
-                <p className="text-slate-400 text-xs mt-0.5 truncate">
+                <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
                   {selectedTrackForOptions.file_name} • {(selectedTrackForOptions.file_size / (1024 * 1024)).toFixed(2)} MB
                 </p>
               </div>
@@ -249,9 +334,9 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
                   playTrack(selectedTrackForOptions);
                   setSelectedTrackForOptions(null);
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-white text-black font-semibold text-sm flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer"
+                className="w-full h-9 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
               >
-                <Play className="w-4 h-4 fill-black" />
+                <Play className="w-3.5 h-3.5 fill-white text-white" />
                 <span>Putar Sekarang</span>
               </button>
 
@@ -261,16 +346,16 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
                   deleteTrack(selectedTrackForOptions.id);
                   setSelectedTrackForOptions(null);
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold text-sm flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer border border-red-500/20"
+                className="w-full h-9 rounded-full bg-red-500/15 hover:bg-red-500/20 text-red-400 font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
               >
-                <Trash2 className="w-4 h-4" />
-                <span>Hapus dari Database</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Lagu</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedTrackForOptions(null)}
-                className="w-full py-2.5 px-4 rounded-xl bg-transparent text-slate-400 hover:text-white font-medium text-xs active:scale-98 transition-transform cursor-pointer text-center"
+                className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
               >
                 Tutup
               </button>

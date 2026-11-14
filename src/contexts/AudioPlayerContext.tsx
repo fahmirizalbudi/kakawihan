@@ -24,6 +24,7 @@ interface AudioPlayerContextType {
   isScanning: boolean;
   currentTime: number;
   duration: number;
+  seek: (time: number) => void;
   playTrack: (track: Track) => Promise<void>;
   togglePlay: () => void;
   nextTrack: () => void;
@@ -58,17 +59,20 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const onPause = () => setIsPlaying(false);
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration || 0);
+    const onDurationChange = () => setDuration(audio.duration || 0);
 
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('durationchange', onDurationChange);
 
     return () => {
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('durationchange', onDurationChange);
       audio.pause();
       if (currentBlobUrlRef.current) {
         URL.revokeObjectURL(currentBlobUrlRef.current);
@@ -158,6 +162,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [isPlaying, currentTrack, tracks, playTrack]);
+
+  // Seek to specific time in seconds
+  const seek = useCallback((time: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const safeTime = Math.max(0, Math.min(time, audio.duration || duration || 0));
+    audio.currentTime = safeTime;
+    setCurrentTime(safeTime);
+  }, [duration]);
 
   // Next track
   const nextTrack = useCallback(() => {
@@ -251,6 +264,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         isScanning,
         currentTime,
         duration,
+        seek,
         playTrack,
         togglePlay,
         nextTrack,
