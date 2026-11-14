@@ -4,8 +4,8 @@ import {
   Play,
   FolderOpen,
   Trash2,
-  X,
   FileAudio,
+  ListPlus,
 } from 'lucide-react';
 import {
   ScreenLayout,
@@ -14,9 +14,11 @@ import {
   MiniPlayer,
   BottomNav,
   TrackItem,
+  Toast,
 } from './ui';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import type { Track } from '../lib/trackService';
+import { getAllPlaylists, addTrackToPlaylist, type Playlist } from '../lib/playlistService';
 
 interface TracksScreenProps {
   onSwitchToPlaylists?: () => void;
@@ -43,6 +45,8 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
   const [sortAsc, setSortAsc] = useState<boolean>(true);
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<Track | null>(null);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState<boolean>(false);
+  const [availablePlaylists, setAvailablePlaylists] = useState<Playlist[]>([]);
 
   const folderInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -170,18 +174,12 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
         </button>
       </div>
 
-      {/* Toast Notification */}
+      {/* Floating Modern Toast Notification */}
       {scanMessage && (
-        <div className="mx-5 mb-2 px-3.5 py-2 rounded-xl bg-[#1c1c1f] text-xs text-slate-200 flex items-center justify-between shadow-lg animate-in fade-in duration-200">
-          <span>{scanMessage}</span>
-          <button
-            type="button"
-            onClick={() => setScanMessage(null)}
-            className="text-[#8e8e93] hover:text-white ml-2 p-0.5"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <Toast
+          message={scanMessage}
+          onClose={() => setScanMessage(null)}
+        />
       )}
 
       {/* Sort Bar (only shown when tracks exist) */}
@@ -342,6 +340,19 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
 
               <button
                 type="button"
+                onClick={async () => {
+                  const lists = await getAllPlaylists();
+                  setAvailablePlaylists(lists);
+                  setIsAddToPlaylistOpen(true);
+                }}
+                className="w-full h-9 rounded-full bg-[#252528] hover:bg-[#2e2e32] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <ListPlus className="w-3.5 h-3.5 stroke-[2]" />
+                <span>Tambah ke Playlist</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   deleteTrack(selectedTrackForOptions.id);
                   setSelectedTrackForOptions(null);
@@ -359,6 +370,63 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
               >
                 Tutup
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Select Playlist Modal */}
+      {isAddToPlaylistOpen && selectedTrackForOptions && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl max-h-[75vh] flex flex-col">
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-4 shrink-0" />
+
+            <div className="flex items-center justify-between pb-3 shrink-0">
+              <div>
+                <h3 className="text-white font-medium text-[15.5px] tracking-tight">
+                  Pilih Playlist
+                </h3>
+                <p className="text-[#8e8e93] text-[12px] truncate max-w-[240px]">
+                  {selectedTrackForOptions.title}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAddToPlaylistOpen(false)}
+                className="h-8 px-3 rounded-full bg-[#252528] text-white font-medium text-[12px] active:scale-95 transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pt-2 scrollbar-none">
+              {availablePlaylists.length === 0 ? (
+                <div className="text-center py-8 text-[#8e8e93] text-xs">
+                  Belum ada playlist. Buat playlist terlebih dahulu di tab Playlists.
+                </div>
+              ) : (
+                availablePlaylists.map((pl) => (
+                  <button
+                    key={pl.id}
+                    type="button"
+                    onClick={async () => {
+                      await addTrackToPlaylist(pl.id, selectedTrackForOptions.id);
+                      setIsAddToPlaylistOpen(false);
+                      setSelectedTrackForOptions(null);
+                      setScanMessage(`Lagu ditambahkan ke "${pl.title}"`);
+                      setTimeout(() => setScanMessage(null), 3500);
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-[#252528] hover:bg-[#2d2d32] active:scale-[0.99] transition-all cursor-pointer text-left"
+                  >
+                    <div>
+                      <h4 className="text-white font-medium text-[14px]">{pl.title}</h4>
+                      <p className="text-[#8e8e93] text-[11.5px] mt-0.5">{pl.tracks_count || 0} lagu</p>
+                    </div>
+                    <span className="text-[12px] text-[#0061FE] font-medium">+ Pilih</span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>

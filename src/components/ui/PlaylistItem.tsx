@@ -1,15 +1,16 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ListMusic } from 'lucide-react';
 
 export interface PlaylistItemProps {
   title: string;
   subtitle: string;
-  coverImage: string;
+  coverImage?: string;
   onClick?: () => void;
   className?: string;
 }
 
 /**
- * Single playlist list item with cover image, title, subtitle, and right chevron.
+ * Single playlist list item with cover image or music list icon, title, subtitle, and right chevron.
+ * Modern flat styling with consistent sizing.
  */
 export function PlaylistItem({
   title,
@@ -26,11 +27,17 @@ export function PlaylistItem({
       tabIndex={onClick ? 0 : undefined}
     >
       <div className="flex items-center gap-3.5 min-w-0">
-        <img
-          src={coverImage}
-          alt={title}
-          className="w-11 h-11 rounded-[12px] object-cover shrink-0 bg-[#1c1c1e]"
-        />
+        {coverImage ? (
+          <img
+            src={coverImage}
+            alt={title}
+            className="w-11 h-11 rounded-[12px] object-cover shrink-0 bg-[#1c1c1e]"
+          />
+        ) : (
+          <div className="w-11 h-11 rounded-[12px] bg-[#1c1c1e] text-[#8e8e93] group-hover:text-white group-hover:bg-[#252528] flex items-center justify-center shrink-0 transition-colors">
+            <ListMusic className="w-5 h-5 stroke-[2]" />
+          </div>
+        )}
         <div className="min-w-0">
           <h3 className="text-white font-medium text-[14.5px] tracking-tight leading-snug group-hover:text-slate-200 transition-colors truncate">
             {title}

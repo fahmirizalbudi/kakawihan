@@ -24,3 +24,6 @@ export type { MiniPlayerProps } from './MiniPlayer';
 
 export { BottomNav } from './BottomNav';
 export type { BottomNavProps, TabType } from './BottomNav';
+
+export { Toast } from './Toast';
+export type { ToastProps } from './Toast';

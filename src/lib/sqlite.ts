@@ -138,6 +138,25 @@ export async function getSqliteDb(): Promise<Database> {
         blob_key TEXT NOT NULL UNIQUE,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS playlists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        cover_image TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS playlist_tracks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playlist_id INTEGER NOT NULL,
+        track_id INTEGER NOT NULL,
+        position INTEGER DEFAULT 0,
+        added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (playlist_id) REFERENCES playlists (id) ON DELETE CASCADE,
+        FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+        UNIQUE (playlist_id, track_id)
+      );
     `);
 
     await saveDbToIdb();
