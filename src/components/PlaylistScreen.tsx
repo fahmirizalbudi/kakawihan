@@ -10,7 +10,6 @@ import {
   SkipForward,
   Play,
   Pause,
-  Wifi,
 } from 'lucide-react';
 
 interface PlaylistItem {
@@ -47,42 +46,11 @@ interface PlaylistScreenProps {
 
 export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [activeTab, setActiveTab] = useState<'grid' | 'music'>('grid');
 
   return (
-    <div className="w-full h-full bg-black text-white flex flex-col select-none overflow-hidden font-['Montserrat',sans-serif]">
-      {/* 1. iOS Status Bar */}
-      <div className="pt-3 px-7 flex items-center justify-between text-white shrink-0 z-20">
-        <span className="text-[14px] font-semibold tracking-tight">8:04</span>
-
-        {/* Dynamic Island */}
-        <div className="w-[105px] h-[26px] bg-black rounded-full flex items-center justify-end pr-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#1c1c1e] border border-[#2c2c2e]" />
-        </div>
-
-        {/* Signal, WiFi, Battery */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-end gap-[1.5px] h-3">
-            <span className="w-[3px] h-1 bg-white rounded-[0.5px]"></span>
-            <span className="w-[3px] h-1.5 bg-white rounded-[0.5px]"></span>
-            <span className="w-[3px] h-2.5 bg-white rounded-[0.5px]"></span>
-            <span className="w-[3px] h-3 bg-white rounded-[0.5px]"></span>
-          </div>
-
-          <Wifi className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-
-          {/* Battery pill showing 66 */}
-          <div className="flex items-center">
-            <div className="w-[23px] h-[11.5px] rounded-[3.5px] border border-white/50 p-[1px] flex items-center bg-[#facc15] text-[8.5px] font-extrabold text-black justify-center leading-none">
-              66
-            </div>
-            <div className="w-[1.5px] h-[4px] bg-white/50 rounded-r-xs -ml-[0.5px]" />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Top Header (Playlists + Search + Settings) */}
-      <div className="px-6 pt-5 pb-3 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-black text-white flex flex-col select-none overflow-hidden font-['Montserrat',sans-serif]">
+      {/* 1. Top Header (Playlists + Search + Settings) */}
+      <header className="px-6 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 flex items-center justify-between shrink-0 bg-black z-20">
         <h1 className="text-[27px] font-bold text-white tracking-tight">Playlists</h1>
         <div className="flex items-center gap-4">
           <button
@@ -100,10 +68,10 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
             <Settings className="w-[21px] h-[21px] stroke-[2.2]" />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* 3. Main Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-2 scrollbar-none">
+      {/* 2. Scrollable Content (HANYA BAGIAN INI YANG SCROLL) */}
+      <main className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-4 scrollbar-none overscroll-contain">
         {/* Top 2 Featured Cards */}
         <div className="grid grid-cols-2 gap-3.5">
           {/* Card 1: Favorites */}
@@ -137,7 +105,6 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
             type="button"
             className="flex items-center gap-1.5 text-white active:opacity-80 transition-opacity cursor-pointer"
           >
-            {/* Sort icon matching the screenshot */}
             <svg
               className="w-4 h-4 text-white"
               viewBox="0 0 16 16"
@@ -189,10 +156,10 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
             </div>
           ))}
         </div>
-      </div>
+      </main>
 
-      {/* 4. Floating Mini Player (Crystal Dreams) */}
-      <div className="px-5 mb-2 shrink-0">
+      {/* 3. Floating Mini Player (Tetap di atas Bottom Nav, tidak ikut scroll) */}
+      <div className="px-5 mb-2 shrink-0 z-30">
         <div className="bg-[#171719] border border-white/[0.06] rounded-[22px] p-2 pr-4 flex items-center justify-between shadow-2xl">
           <div className="flex items-center gap-3 min-w-0">
             <img
@@ -238,40 +205,32 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
         </div>
       </div>
 
-      {/* 5. Bottom Navigation Bar */}
-      <div className="bg-black border-t border-white/[0.04] px-12 pt-3 pb-2 flex flex-col shrink-0">
-        <div className="flex items-center justify-around">
-          {/* Tab 1: 4 Rounded Squares Grid */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('grid')}
-            className={`p-2 transition-transform active:scale-90 cursor-pointer ${
-              activeTab === 'grid' ? 'opacity-100' : 'opacity-40 hover:opacity-70'
-            }`}
-            aria-label="Grid view"
-          >
-            <div className="grid grid-cols-2 gap-[3px] w-[21px] h-[21px]">
-              <div className="bg-white rounded-[4px]" />
-              <div className="bg-white rounded-[4px]" />
-              <div className="bg-white rounded-[4px]" />
-              <div className="bg-white rounded-[4px]" />
-            </div>
-          </button>
+      {/* 4. Fixed Bottom Navigation Bar (Selalu menempel di dasar layar mobile, gesture hint dihapus) */}
+      <nav className="bg-black border-t border-white/[0.06] px-12 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-around shrink-0 z-30">
+        {/* Tab 1: 4 Rounded Squares Grid */}
+        <button
+          type="button"
+          className="p-2 transition-transform active:scale-90 cursor-pointer text-white opacity-100"
+          aria-label="Grid view"
+        >
+          <div className="grid grid-cols-2 gap-[3px] w-[21px] h-[21px]">
+            <div className="bg-white rounded-[4px]" />
+            <div className="bg-white rounded-[4px]" />
+            <div className="bg-white rounded-[4px]" />
+            <div className="bg-white rounded-[4px]" />
+          </div>
+        </button>
 
-          {/* Tab 2: Musical Note (Switch to Tracks) */}
-          <button
-            type="button"
-            onClick={onSwitchToTracks}
-            className="p-2 transition-transform active:scale-90 cursor-pointer text-[#636366] hover:text-[#8e8e93]"
-            aria-label="Switch to Tracks"
-          >
-            <Music className="w-[23px] h-[23px] stroke-[2.2]" />
-          </button>
-        </div>
-
-        {/* iPhone Home Indicator */}
-        <div className="w-36 h-1 bg-white/90 rounded-full mx-auto mt-3 mb-1" />
-      </div>
+        {/* Tab 2: Musical Note (Switch to Tracks) */}
+        <button
+          type="button"
+          onClick={onSwitchToTracks}
+          className="p-2 transition-transform active:scale-90 cursor-pointer text-[#636366] hover:text-[#8e8e93]"
+          aria-label="Switch to Tracks"
+        >
+          <Music className="w-[23px] h-[23px] stroke-[2.2]" />
+        </button>
+      </nav>
     </div>
   );
 }
