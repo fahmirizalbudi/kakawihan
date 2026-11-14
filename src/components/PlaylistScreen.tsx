@@ -41,7 +41,11 @@ const PLAYLISTS: PlaylistItem[] = [
   },
 ];
 
-export function PlaylistScreen() {
+interface PlaylistScreenProps {
+  onSwitchToTracks?: () => void;
+}
+
+export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeTab, setActiveTab] = useState<'grid' | 'music'>('grid');
 
@@ -254,16 +258,12 @@ export function PlaylistScreen() {
             </div>
           </button>
 
-          {/* Tab 2: Musical Note */}
+          {/* Tab 2: Musical Note (Switch to Tracks) */}
           <button
             type="button"
-            onClick={() => setActiveTab('music')}
-            className={`p-2 transition-transform active:scale-90 cursor-pointer ${
-              activeTab === 'music'
-                ? 'text-white opacity-100'
-                : 'text-[#636366] hover:text-[#8e8e93]'
-            }`}
-            aria-label="Music tab"
+            onClick={onSwitchToTracks}
+            className="p-2 transition-transform active:scale-90 cursor-pointer text-[#636366] hover:text-[#8e8e93]"
+            aria-label="Switch to Tracks"
           >
             <Music className="w-[23px] h-[23px] stroke-[2.2]" />
           </button>
