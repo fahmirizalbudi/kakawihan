@@ -17,40 +17,15 @@ import {
 interface TrackItem {
   id: string;
   title: string;
-  coverImage: string;
 }
 
 const TRACKS: TrackItem[] = [
-  {
-    id: '1',
-    title: 'Afterglow',
-    coverImage: '/covers/afterglow.jpg',
-  },
-  {
-    id: '2',
-    title: 'Crystal Dreams',
-    coverImage: '/covers/crystal-dreams.jpg',
-  },
-  {
-    id: '3',
-    title: 'Desert Bloom',
-    coverImage: '/covers/desert-bloom.jpg',
-  },
-  {
-    id: '4',
-    title: 'Echoes in the Sky',
-    coverImage: '/covers/echoes-in-the-sky.jpg',
-  },
-  {
-    id: '5',
-    title: 'Electric Soul',
-    coverImage: '/covers/electric-soul.jpg',
-  },
-  {
-    id: '6',
-    title: 'Neon Mirage',
-    coverImage: '/covers/neon-mirage.jpg',
-  },
+  { id: '1', title: 'Afterglow' },
+  { id: '2', title: 'Crystal Dreams' },
+  { id: '3', title: 'Desert Bloom' },
+  { id: '4', title: 'Echoes in the Sky' },
+  { id: '5', title: 'Electric Soul' },
+  { id: '6', title: 'Neon Mirage' },
 ];
 
 interface TracksScreenProps {
@@ -167,7 +142,7 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
         </div>
       </div>
 
-      {/* 4. Tracks List */}
+      {/* 4. Tracks List (Using Music/Notes Icon instead of images) */}
       <div className="flex-1 overflow-y-auto px-6 space-y-4 pb-2 scrollbar-none">
         {TRACKS.map((track) => {
           const isCurrentActive = activeTrack === track.title;
@@ -178,14 +153,20 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
               className="flex items-center justify-between group active:scale-[0.99] transition-transform cursor-pointer"
             >
               <div className="flex items-center gap-3.5 min-w-0">
-                <img
-                  src={track.coverImage}
-                  alt={track.title}
-                  className="w-[58px] h-[58px] rounded-[18px] object-cover shrink-0 shadow-md bg-[#1c1c1e]"
-                />
+                {/* Rounded Icon Container */}
+                <div
+                  className={`w-[56px] h-[56px] rounded-[18px] flex items-center justify-center shrink-0 border transition-all ${
+                    isCurrentActive
+                      ? 'bg-[#1e1e24] border-white/20 text-white shadow-md'
+                      : 'bg-[#151518] border-white/[0.05] text-[#8e8e93] group-hover:text-white group-hover:bg-[#1a1a1e]'
+                  }`}
+                >
+                  <Music className="w-6 h-6 stroke-[1.8]" />
+                </div>
+
                 <span
                   className={`font-semibold text-[15px] truncate tracking-tight transition-colors ${
-                    isCurrentActive ? 'text-white' : 'text-white group-hover:text-slate-200'
+                    isCurrentActive ? 'text-white font-bold' : 'text-white group-hover:text-slate-200'
                   }`}
                 >
                   {track.title}
@@ -211,13 +192,13 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
       <div className="px-5 mb-2 shrink-0">
         <div className="bg-[#171719] border border-white/[0.06] rounded-[22px] p-2 pr-4 flex items-center justify-between shadow-2xl">
           <div className="flex items-center gap-3 min-w-0">
-            <img
-              src="/covers/crystal-dreams.jpg"
-              alt="Crystal Dreams"
-              className="w-11 h-11 rounded-[14px] object-cover shrink-0 shadow bg-[#1c1c1e]"
-            />
+            {/* Music note icon for mini player */}
+            <div className="w-11 h-11 rounded-[14px] bg-[#1e1e24] border border-white/10 flex items-center justify-center shrink-0 text-white shadow">
+              <Music className="w-5 h-5 stroke-[1.9]" />
+            </div>
+
             <span className="text-white font-semibold text-[14px] truncate tracking-tight">
-              Crystal Dreams
+              {activeTrack}
             </span>
           </div>
 
