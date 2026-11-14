@@ -403,7 +403,7 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
             <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pt-2 scrollbar-none">
               {availablePlaylists.length === 0 ? (
                 <div className="text-center py-8 text-[#8e8e93] text-xs">
-                  Belum ada playlist. Buat playlist terlebih dahulu di tab Playlists.
+                  Belum ada playlist. Tambahkan playlist terlebih dahulu di tab Playlists.
                 </div>
               ) : (
                 availablePlaylists.map((pl) => (

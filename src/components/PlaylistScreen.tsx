@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus,
   Play,
@@ -8,6 +8,8 @@ import {
   ListMusic,
   Check,
   Folder,
+  Camera,
+  ImagePlus,
 } from 'lucide-react';
 import {
   ScreenLayout,
@@ -54,12 +56,15 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
   const [playlistTracks, setPlaylistTracks] = useState<Track[]>([]);
   const [isLoadingTracks, setIsLoadingTracks] = useState<boolean>(false);
 
-  // Modals & form state
+  // Bottom sheet & form state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [newTitle, setNewTitle] = useState<string>('');
+  const [newCover, setNewCover] = useState<string>('');
   const [isAddTracksModalOpen, setIsAddTracksModalOpen] = useState<boolean>(false);
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<Track | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -96,20 +101,34 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
     }
   }, []);
 
-  // Create playlist
+  // Handle cover image selection
+  const handleCoverSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setNewCover(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // Save new playlist with title and cover
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
     try {
-      const created = await createPlaylist(newTitle.trim());
+      const created = await createPlaylist(newTitle.trim(), '', newCover);
       setNewTitle('');
+      setNewCover('');
       setIsCreateModalOpen(false);
       await fetchPlaylists();
-      showToast(`Playlist "${created.title}" berhasil dibuat`);
+      showToast(`Playlist "${created.title}" berhasil ditambahkan`);
     } catch (err) {
-      console.error('Gagal membuat playlist:', err);
-      showToast('Gagal membuat playlist');
+      console.error('Gagal menambahkan playlist:', err);
+      showToast('Gagal menambahkan playlist');
     }
   };
 
@@ -179,7 +198,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                 className="h-8 px-3.5 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[12.5px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Buat Playlist</span>
+                <span>Tambah Playlist</span>
               </button>
             }
           />
@@ -224,7 +243,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                   Belum Ada Playlist
                 </h3>
                 <p className="text-[13px] text-[#8e8e93] max-w-[260px] leading-relaxed mb-6">
-                  Buat playlist untuk menyusun dan mengelompokkan lagu-lagu favorit Anda
+                  Kelompokkan dan susun lagu-lagu favorit Anda dalam playlist
                 </p>
 
                 <button
@@ -233,7 +252,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                   className="h-9 px-5 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Buat Playlist Pertama</span>
+                  <span>Tambah Playlist</span>
                 </button>
               </div>
             ) : (
@@ -278,9 +297,17 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
           <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
             {/* Playlist Header Card */}
             <div className="flex items-center gap-4 py-3 shrink-0">
-              <div className="w-14 h-14 rounded-[16px] bg-[#1c1c1e] text-[#0061FE] flex items-center justify-center shrink-0">
-                <ListMusic className="w-7 h-7 stroke-[2]" />
-              </div>
+              {selectedPlaylist.cover_image ? (
+                <img
+                  src={selectedPlaylist.cover_image}
+                  alt={selectedPlaylist.title}
+                  className="w-14 h-14 rounded-[16px] object-cover shrink-0 bg-[#1c1c1e]"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-[16px] bg-[#1c1c1e] text-[#0061FE] flex items-center justify-center shrink-0">
+                  <ListMusic className="w-7 h-7 stroke-[2]" />
+                </div>
+              )}
 
               <div className="min-w-0">
                 <h2 className="text-white font-semibold text-[18px] tracking-tight leading-tight truncate">
@@ -381,51 +408,124 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
         }}
       />
 
-      {/* MODAL 1: Buat Playlist Baru */}
+      {/* BOTTOM SHEET DIALOG: Tambah Playlist (Style sama persis dengan TracksScreen) */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-5 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-[#1c1c1f] rounded-[24px] p-6 shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#0061FE]/20 text-[#0061FE] flex items-center justify-center shrink-0">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+            {/* Drag handle */}
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5 shrink-0" />
+
+            {/* Header: Sesuai struktur TracksScreen */}
+            <div className="flex items-center gap-3.5 mb-5 pb-4">
+              <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
                 <FolderPlus className="w-5 h-5 stroke-[2]" />
               </div>
-              <div>
-                <h3 className="text-white font-medium text-[15.5px] tracking-tight">
-                  Buat Playlist Baru
-                </h3>
-                <p className="text-[#8e8e93] text-[12px]">
-                  Masukkan nama untuk playlist Anda
+              <div className="min-w-0">
+                <h4 className="text-white font-medium text-[14.5px] truncate tracking-tight">
+                  Tambah Playlist
+                </h4>
+                <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
+                  {newTitle.trim() || 'Playlist baru tanpa nama'}
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleCreate}>
-              <input
-                type="text"
-                autoFocus
-                placeholder="Contoh: Lagu Favorit"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl bg-[#252528] text-white text-[14px] placeholder-[#8e8e93] focus:outline-none mb-5"
-              />
+            {/* Hidden image input for cover */}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverSelected}
+            />
 
-              <div className="flex items-center justify-end gap-2.5">
+            <form onSubmit={handleCreate} className="space-y-4">
+              {/* Input 1: Cover Image Picker */}
+              <div>
+                <label className="text-[#8e8e93] text-xs font-medium block mb-1.5">
+                  Foto Sampul (Opsional)
+                </label>
+                <div className="flex items-center gap-3.5 p-2.5 rounded-2xl bg-[#242428]">
+                  <div
+                    onClick={() => coverInputRef.current?.click()}
+                    className="w-11 h-11 rounded-[10px] bg-[#1c1c1f] hover:bg-[#18181b] transition-colors cursor-pointer flex items-center justify-center relative overflow-hidden group shrink-0"
+                  >
+                    {newCover ? (
+                      <>
+                        <img
+                          src={newCover}
+                          alt="Sampul"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <Camera className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <ImagePlus className="w-5 h-5 text-[#8e8e93] group-hover:text-white transition-colors" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-[13px] font-medium truncate">
+                      {newCover ? 'Sampul dipilih' : 'Pilih dari galeri'}
+                    </p>
+                    {newCover ? (
+                      <button
+                        type="button"
+                        onClick={() => setNewCover('')}
+                        className="text-red-400 hover:text-red-300 text-[11px] font-medium cursor-pointer"
+                      >
+                        Hapus foto
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => coverInputRef.current?.click()}
+                        className="text-[#0061FE] text-[11px] font-medium cursor-pointer"
+                      >
+                        Ketuk untuk memilih foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Input 2: Nama Playlist */}
+              <div>
+                <label className="text-[#8e8e93] text-xs font-medium block mb-1.5">
+                  Nama Playlist
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Contoh: Lagu Favorit"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full h-10 px-3.5 rounded-xl bg-[#242428] text-white text-[13.5px] placeholder-[#8e8e93] focus:outline-none"
+                />
+              </div>
+
+              {/* Action Buttons: Stack vertikal sama seperti TracksScreen */}
+              <div className="space-y-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={!newTitle.trim()}
+                  className="w-full h-9 rounded-full bg-[#0061FE] hover:bg-[#0052d9] disabled:opacity-40 text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
+                >
+                  <span>Simpan Playlist</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
                     setIsCreateModalOpen(false);
                     setNewTitle('');
+                    setNewCover('');
                   }}
-                  className="h-9 px-4 rounded-full bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer"
+                  className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
                 >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newTitle.trim()}
-                  className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] disabled:opacity-40 text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer shadow-sm"
-                >
-                  Simpan
+                  Tutup
                 </button>
               </div>
             </form>
@@ -433,7 +533,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
         </div>
       )}
 
-      {/* MODAL 2: Tambah Lagu ke Playlist */}
+      {/* BOTTOM SHEET 2: Tambah Lagu ke Playlist */}
       {isAddTracksModalOpen && selectedPlaylist && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
           <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl max-h-[80vh] flex flex-col">
@@ -504,7 +604,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
         </div>
       )}
 
-      {/* MODAL 3: Track Options in Playlist Detail */}
+      {/* BOTTOM SHEET 3: Track Options in Playlist Detail */}
       {selectedTrackForOptions && selectedPlaylist && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
           <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
