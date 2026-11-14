@@ -6,8 +6,8 @@ import { Smartphone, ShieldAlert, QrCode } from 'lucide-react';
 
 export default function App() {
   const { isMobileDevice } = useMobileDetection();
-  // Default to 'tracks' screen
-  const [currentScreen, setCurrentScreen] = useState<'playlists' | 'tracks'>('tracks');
+  // Default to 'playlists' screen (sesuai gambar yang diunggah)
+  const [currentScreen, setCurrentScreen] = useState<'playlists' | 'tracks'>('playlists');
 
   // Strict Mobile Check: JIKA BUKAN PERANGKAT MOBILE, BLOKIR AKSES
   if (!isMobileDevice) {
