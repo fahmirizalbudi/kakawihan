@@ -484,7 +484,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                 {/* ── SortBar: sort di kiri, "+" di kanan ── */}
                 <SortBar
                   className="px-0.5 pt-1 pb-0.5"
-                  label={sortAsc ? 'Name' : 'Name'}
+                  label={sortAsc ? 'Name (A-Z)' : 'Name (Z-A)'}
                   onSortClick={() => setSortAsc(!sortAsc)}
                   rightContent={
                     <button

@@ -2,12 +2,12 @@ import { useState, useRef, useMemo } from 'react';
 import {
   Shuffle,
   Play,
-  FolderOpen,
   Trash2,
   FileAudio,
   ListPlus,
   Heart,
   Search,
+  Plus,
 } from 'lucide-react';
 import {
   ScreenLayout,
@@ -42,6 +42,7 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     prevTrack,
     scanAudioFiles,
     deleteTrack,
+    deleteMultipleTracks,
     toggleFavorite,
   } = useAudioPlayer();
 
@@ -53,71 +54,72 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
   const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState<boolean>(false);
   const [availablePlaylists, setAvailablePlaylists] = useState<Playlist[]>([]);
 
-  const folderInputRef = useRef<HTMLInputElement | null>(null);
+  // Multi-selection delete state
+  const [isSelectionMode, setIsSelectionMode] = useState<boolean>(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
 
-  // Handle files selected from folder picker
-  const handleFolderSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Handle files selected from file picker
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     try {
       const added = await scanAudioFiles(files);
       if (added > 0) {
-        setScanMessage(`Berhasil menambahkan ${added} lagu dari folder`);
+        setScanMessage(`Berhasil menambahkan ${added} lagu`);
       } else {
-        setScanMessage('Tidak ada file audio (.mp3, .wav, .m4a, dll) di folder ini.');
+        setScanMessage('Tidak ada file audio yang valid.');
       }
       setTimeout(() => setScanMessage(null), 3500);
     } catch {
-      setScanMessage('Gagal memindai file audio dari folder.');
+      setScanMessage('Gagal menambahkan file audio.');
       setTimeout(() => setScanMessage(null), 3500);
     } finally {
       e.target.value = '';
     }
   };
 
-  // Scan 1 folder
-  const handleScanFolder = async () => {
-    if ('showDirectoryPicker' in window) {
+  // Pick audio files
+  const handlePickFiles = async () => {
+    if ('showOpenFilePicker' in window) {
       try {
         // @ts-expect-error File System Access API
-        const dirHandle = await window.showDirectoryPicker();
-        const audioFiles: File[] = [];
-
-        async function scanDirectory(handle: any) {
-          for await (const entry of handle.values()) {
-            if (entry.kind === 'file') {
-              const file = await entry.getFile();
-              if (
-                file.type.startsWith('audio/') ||
-                /\.(mp3|wav|ogg|m4a|aac|flac|weba)$/i.test(file.name)
-              ) {
-                audioFiles.push(file);
-              }
-            } else if (entry.kind === 'directory') {
-              await scanDirectory(entry);
-            }
-          }
+        const fileHandles = await window.showOpenFilePicker({
+          multiple: true,
+          types: [
+            {
+              description: 'Audio Files',
+              accept: {
+                'audio/*': ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.weba', '.opus'],
+              },
+            },
+          ],
+        });
+        const files: File[] = [];
+        for (const handle of fileHandles) {
+          const file = await handle.getFile();
+          files.push(file);
         }
-
-        await scanDirectory(dirHandle);
-
-        if (audioFiles.length > 0) {
-          const added = await scanAudioFiles(audioFiles);
-          setScanMessage(`Berhasil menambahkan ${added} lagu dari folder "${dirHandle.name}"`);
-          setTimeout(() => setScanMessage(null), 3500);
-        } else {
-          setScanMessage(`Tidak ada file audio di folder "${dirHandle.name}".`);
+        if (files.length > 0) {
+          const added = await scanAudioFiles(files);
+          if (added > 0) {
+            setScanMessage(`Berhasil menambahkan ${added} lagu`);
+          } else {
+            setScanMessage('Tidak ada file audio yang valid.');
+          }
           setTimeout(() => setScanMessage(null), 3500);
         }
         return;
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
-        // Fallback to folder input
+        // Fallback to file input
       }
     }
 
-    folderInputRef.current?.click();
+    fileInputRef.current?.click();
   };
 
   // Filtered and sorted tracks
@@ -153,18 +155,62 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     playTrack(list[0]);
   };
 
+  // Selection handlers
+  const handleLongPressTrack = (trackId: number) => {
+    setIsSelectionMode(true);
+    setSelectedIds(new Set([trackId]));
+  };
+
+  const handleToggleSelectTrack = (trackId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(trackId)) {
+        next.delete(trackId);
+      } else {
+        next.add(trackId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.size === displayedTracks.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(displayedTracks.map((t) => t.id)));
+    }
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleConfirmBatchDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    try {
+      await deleteMultipleTracks(ids);
+      setScanMessage(`Berhasil menghapus ${ids.length} lagu`);
+      setTimeout(() => setScanMessage(null), 3500);
+      exitSelectionMode();
+      setIsDeleteConfirmOpen(false);
+    } catch {
+      setScanMessage('Gagal menghapus lagu terpilih');
+      setTimeout(() => setScanMessage(null), 3500);
+    }
+  };
+
   return (
     <ScreenLayout>
-      {/* Hidden Folder Input for scanning 1 whole folder */}
+      {/* Hidden File Input for selecting multiple music files */}
       <input
-        ref={folderInputRef}
+        ref={fileInputRef}
         type="file"
-        // @ts-expect-error webkitdirectory is standard for folder upload in modern browsers
-        webkitdirectory=""
-        directory=""
         multiple
+        accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.weba,.opus"
         className="hidden"
-        onChange={handleFolderSelected}
+        onChange={handleFilesSelected}
       />
 
       {/* Screen Header */}
@@ -180,26 +226,58 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
         searchPlaceholder="Cari lagu atau artis..."
       />
 
-      {/* Action Row: Scan Folder & Shuffle */}
-      <div className="flex items-center gap-2.5 px-5 pt-1 pb-2 shrink-0">
-        <button
-          type="button"
-          onClick={handleScanFolder}
-          className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
-        >
-          <FolderOpen className="w-4 h-4 stroke-[2]" />
-          <span>Scan Folder</span>
-        </button>
+      {/* Action Row: Normal or Selection Actions */}
+      <div className="flex items-center gap-2 px-5 pt-1 pb-2 shrink-0">
+        {isSelectionMode ? (
+          <>
+            <button
+              type="button"
+              disabled={selectedIds.size === 0}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="h-9 px-4 rounded-full bg-red-500/15 hover:bg-red-500/20 disabled:opacity-40 text-red-400 font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+              <span>Hapus ({selectedIds.size})</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={handleShuffle}
-          disabled={tracks.length === 0}
-          className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center gap-1.5 disabled:opacity-40 active:scale-95 transition-all cursor-pointer"
-        >
-          <Shuffle className="w-4 h-4 stroke-[2]" />
-          <span>Shuffle</span>
-        </button>
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <span>{selectedIds.size === displayedTracks.length ? 'Batal Semua' : 'Pilih Semua'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={exitSelectionMode}
+              className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer ml-auto"
+            >
+              <span>Selesai</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handlePickFiles}
+              className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Pilih Lagu</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShuffle}
+              disabled={tracks.length === 0}
+              className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center gap-1.5 disabled:opacity-40 active:scale-95 transition-all cursor-pointer"
+            >
+              <Shuffle className="w-4 h-4 stroke-[2]" />
+              <span>Shuffle</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Floating Modern Toast Notification */}
@@ -239,13 +317,12 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
         ) : isScanning ? (
           <div className="flex-1 flex flex-col items-center justify-center text-[#8e8e93] text-sm py-12">
             <div className="w-6 h-6 border-2 border-[#0061FE] border-t-transparent rounded-full animate-spin mb-3" />
-            <span className="text-white font-medium">Memindai folder audio ke SQLite...</span>
+            <span className="text-white font-medium">Menambahkan file audio ke database...</span>
             <span className="text-xs text-[#8e8e93] mt-1">Harap tunggu sebentar</span>
           </div>
         ) : tracks.length === 0 ? (
-          /* Empty State - Flat style inspired by screenshot */
+          /* Empty State */
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8 px-4 my-auto select-none">
-            {/* Flat Document outline icon with plus sign */}
             <div className="w-16 h-20 text-[#3a3a3e] mb-5">
               <svg
                 className="w-full h-full"
@@ -277,17 +354,16 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
               Belum Ada Lagu
             </h3>
             <p className="text-[13px] text-[#8e8e93] max-w-[260px] leading-relaxed mb-6">
-              Pindai folder musik dari perangkat Anda untuk menambahkan lagu
+              Pilih file musik dari perangkat Anda untuk menambahkan lagu
             </p>
 
-            {/* Flat Blue Action Button - unified size, not oversized */}
             <button
               type="button"
-              onClick={handleScanFolder}
+              onClick={handlePickFiles}
               className="h-9 px-5 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
             >
-              <FolderOpen className="w-4 h-4" />
-              <span>Scan Folder Lagu</span>
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Pilih File Lagu</span>
             </button>
           </div>
         ) : displayedTracks.length === 0 ? (
@@ -310,8 +386,17 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
                 title={track.title}
                 subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB • ${track.file_name.split('.').pop()?.toUpperCase() || 'AUDIO'}`}
                 isActive={currentTrack?.id === track.id}
-                onClick={() => playTrack(track)}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedIds.has(track.id)}
+                onClick={() => {
+                  if (isSelectionMode) {
+                    handleToggleSelectTrack(track.id);
+                  } else {
+                    playTrack(track);
+                  }
+                }}
                 onOptions={() => setSelectedTrackForOptions(track)}
+                onLongPress={() => handleLongPressTrack(track.id)}
               />
             ))}
           </div>
@@ -342,6 +427,48 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
           if (tab === 'playlists') onSwitchToPlaylists?.();
         }}
       />
+
+      {/* Batch Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
+
+            <div className="flex items-center gap-3.5 mb-5 pb-4">
+              <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
+                <Trash2 className="w-5 h-5 stroke-[2] text-red-400" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-white font-medium text-[14.5px] truncate tracking-tight">
+                  Hapus {selectedIds.size} Lagu Terpilih?
+                </h4>
+                <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
+                  Lagu akan dihapus permanen dari penyimpanan lokal perangkat.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleConfirmBatchDelete}
+                className="w-full h-9 rounded-full bg-red-500/15 hover:bg-red-500/20 text-red-400 font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus {selectedIds.size} Lagu Terpilih</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Track Options Modal / Bottom Sheet */}
       {selectedTrackForOptions && (

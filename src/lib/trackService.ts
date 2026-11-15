@@ -193,18 +193,36 @@ export async function scanAudioFiles(files: FileList | File[]): Promise<number> 
  * Deletes a track from SQLite and its corresponding audio blob from IndexedDB.
  */
 export async function deleteTrack(id: number): Promise<void> {
+  await deleteMultipleTracks([id]);
+}
+
+/**
+ * Deletes multiple tracks from SQLite and their audio blobs from IndexedDB.
+ */
+export async function deleteMultipleTracks(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
   const db = await getSqliteDb();
+  const placeholders = ids.map(() => '?').join(',');
+
   const tracks = execQuery<Track>(
     db,
-    'SELECT blob_key FROM tracks WHERE id = ? LIMIT 1',
-    [id]
+    `SELECT blob_key FROM tracks WHERE id IN (${placeholders})`,
+    ids
   );
 
-  if (tracks.length > 0) {
-    await deleteAudioBlob(tracks[0].blob_key);
+  for (const t of tracks) {
+    await deleteAudioBlob(t.blob_key);
   }
 
-  db.run('DELETE FROM tracks WHERE id = ?', [id]);
+  db.run(`DELETE FROM tracks WHERE id IN (${placeholders})`, ids);
+
+  try {
+    db.run(`DELETE FROM playlist_tracks WHERE track_id IN (${placeholders})`, ids);
+    db.run(`DELETE FROM recently_played WHERE track_id IN (${placeholders})`, ids);
+  } catch {
+    // Non-fatal
+  }
+
   await saveDbToIdb();
 }
 

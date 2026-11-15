@@ -11,6 +11,7 @@ import {
   getAllTracks,
   scanAudioFiles as scanFilesService,
   deleteTrack as deleteTrackService,
+  deleteMultipleTracks as deleteMultipleService,
   seedDemoTrack as seedDemoService,
   toggleFavorite as toggleFavoriteService,
   type Track,
@@ -34,6 +35,7 @@ interface AudioPlayerContextType {
   scanAudioFiles: (files: FileList | File[]) => Promise<number>;
   seedDemoTrack: () => Promise<void>;
   deleteTrack: (id: number) => Promise<void>;
+  deleteMultipleTracks: (ids: number[]) => Promise<void>;
   refreshTracks: () => Promise<void>;
   toggleFavorite: (trackId: number) => Promise<number>;
 }
@@ -260,6 +262,24 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     [currentTrack, refreshTracks]
   );
 
+  // Delete multiple tracks
+  const deleteMultipleTracks = useCallback(
+    async (ids: number[]) => {
+      try {
+        if (currentTrack && ids.includes(currentTrack.id)) {
+          audioRef.current?.pause();
+          setIsPlaying(false);
+          setCurrentTrack(null);
+        }
+        await deleteMultipleService(ids);
+        await refreshTracks();
+      } catch (err) {
+        console.error('Gagal menghapus beberapa lagu:', err);
+      }
+    },
+    [currentTrack, refreshTracks]
+  );
+
   // Toggle favorite
   const toggleFavorite = useCallback(
     async (trackId: number): Promise<number> => {
@@ -288,6 +308,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         scanAudioFiles,
         seedDemoTrack,
         deleteTrack,
+        deleteMultipleTracks,
         refreshTracks,
         toggleFavorite,
       }}
