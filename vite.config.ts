@@ -10,13 +10,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons.svg', 'sql-wasm.wasm', 'sql-wasm-browser.wasm', 'pwa-192x192.png', 'pwa-512x512.png'],
+      includeAssets: ['favicon.ico', 'sql-wasm.wasm', 'sql-wasm-browser.wasm', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'Kakawihan Sunda - Mobile PWA',
+        name: 'Kakawihan',
         short_name: 'Kakawihan',
-        description: 'Aplikasi PWA Lagu Kakawihan Sunda Berbasis SQLite Offline',
-        theme_color: '#059669',
-        background_color: '#0f172a',
+        description: 'Pemutar musik modern local-first berbasis SQLite WebAssembly dan IndexedDB',
+        theme_color: '#101012',
+        background_color: '#101012',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
@@ -39,7 +39,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,wasm}'],
       },
     }),
   ],
