@@ -149,12 +149,6 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     playTrack(list[randomIndex]);
   };
 
-  const handlePlayAll = () => {
-    const list = displayedTracks.length > 0 ? displayedTracks : tracks;
-    if (list.length === 0) return;
-    playTrack(list[0]);
-  };
-
   // Selection handlers
   const handleLongPressTrack = (trackId: number) => {
     setIsSelectionMode(true);
@@ -226,60 +220,6 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
         searchPlaceholder="Cari lagu atau artis..."
       />
 
-      {/* Action Row: Normal or Selection Actions */}
-      <div className="flex items-center gap-2 px-5 pt-1 pb-2 shrink-0">
-        {isSelectionMode ? (
-          <>
-            <button
-              type="button"
-              disabled={selectedIds.size === 0}
-              onClick={() => setIsDeleteConfirmOpen(true)}
-              className="h-9 px-4 rounded-full bg-red-500/15 hover:bg-red-500/20 disabled:opacity-40 text-red-400 font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
-              <span>Hapus ({selectedIds.size})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleToggleSelectAll}
-              className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-            >
-              <span>{selectedIds.size === displayedTracks.length ? 'Batal Semua' : 'Pilih Semua'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={exitSelectionMode}
-              className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer ml-auto"
-            >
-              <span>Selesai</span>
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handlePickFiles}
-              className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Pilih Lagu</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShuffle}
-              disabled={tracks.length === 0}
-              className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center gap-1.5 disabled:opacity-40 active:scale-95 transition-all cursor-pointer"
-            >
-              <Shuffle className="w-4 h-4 stroke-[2]" />
-              <span>Shuffle</span>
-            </button>
-          </>
-        )}
-      </div>
-
       {/* Floating Modern Toast Notification */}
       {scanMessage && (
         <Toast
@@ -288,21 +228,67 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
         />
       )}
 
-      {/* Sort Bar (only shown when tracks exist) */}
-      {tracks.length > 0 && (
+      {/* SortBar / Selection Actions Bar */}
+      {isSelectionMode ? (
+        <div className="flex items-center justify-between px-5 pt-1 pb-2 shrink-0">
+          <span className="text-white text-[13.5px] font-medium">
+            {selectedIds.size} dipilih
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={selectedIds.size === 0}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="h-8 px-3 rounded-full bg-red-500/15 hover:bg-red-500/20 disabled:opacity-40 text-red-400 font-medium text-[12.5px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+              <span>Hapus ({selectedIds.size})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="h-8 px-3 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[12.5px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <span>{selectedIds.size === displayedTracks.length ? 'Batal Semua' : 'Pilih Semua'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={exitSelectionMode}
+              className="h-8 px-3 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[12.5px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <span>Selesai</span>
+            </button>
+          </div>
+        </div>
+      ) : (
         <SortBar
           className="px-5 pt-1 pb-2 shrink-0"
           label={sortAsc ? 'Name (A-Z)' : 'Name (Z-A)'}
           onSortClick={() => setSortAsc(!sortAsc)}
           rightContent={
-            <button
-              type="button"
-              onClick={handlePlayAll}
-              className="h-8 px-3 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[12.5px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-            >
-              <Play className="w-3.5 h-3.5 fill-white text-white" />
-              <span>Play all</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleShuffle}
+                disabled={tracks.length === 0}
+                className="w-8 h-8 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+                aria-label="Shuffle"
+                title="Shuffle"
+              >
+                <Shuffle className="w-4 h-4 stroke-[2]" />
+              </button>
+              <button
+                type="button"
+                onClick={handlePickFiles}
+                className="w-8 h-8 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                aria-label="Pilih Lagu"
+                title="Pilih Lagu"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
           }
         />
       )}
