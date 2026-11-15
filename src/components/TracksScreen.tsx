@@ -113,8 +113,8 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
           setTimeout(() => setScanMessage(null), 3500);
         }
         return;
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
+      } catch (err: unknown) {
+        if ((err as Error)?.name === 'AbortError') return;
         // Fallback to file input
       }
     }

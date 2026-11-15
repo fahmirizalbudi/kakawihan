@@ -130,6 +130,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlaylists();
     fetchFavCount();
     fetchRecentCount();

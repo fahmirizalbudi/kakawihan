@@ -101,6 +101,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [currentTrack]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshTracks();
   }, [refreshTracks]);
 
@@ -318,6 +319,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAudioPlayer() {
   const context = useContext(AudioPlayerContext);
   if (!context) {
