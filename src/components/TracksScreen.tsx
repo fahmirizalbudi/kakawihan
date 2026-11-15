@@ -6,6 +6,7 @@ import {
   Trash2,
   FileAudio,
   ListPlus,
+  Heart,
 } from 'lucide-react';
 import {
   ScreenLayout,
@@ -40,6 +41,7 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     prevTrack,
     scanAudioFiles,
     deleteTrack,
+    toggleFavorite,
   } = useAudioPlayer();
 
   const [sortAsc, setSortAsc] = useState<boolean>(true);
@@ -336,6 +338,27 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
               >
                 <Play className="w-3.5 h-3.5 fill-white text-white" />
                 <span>Putar Sekarang</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const isFav = selectedTrackForOptions.is_favorite === 1;
+                  await toggleFavorite(selectedTrackForOptions.id);
+                  setScanMessage(isFav ? 'Dihapus dari Favorit' : 'Ditambahkan ke Favorit');
+                  setTimeout(() => setScanMessage(null), 3000);
+                  setSelectedTrackForOptions(null);
+                }}
+                className={`w-full h-9 rounded-full font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer ${
+                  selectedTrackForOptions.is_favorite === 1
+                    ? 'bg-pink-500/15 hover:bg-pink-500/20 text-pink-400'
+                    : 'bg-[#252528] hover:bg-[#2e2e32] text-white'
+                }`}
+              >
+                <Heart
+                  className={`w-3.5 h-3.5 stroke-[2] ${selectedTrackForOptions.is_favorite === 1 ? 'fill-pink-400' : ''}`}
+                />
+                <span>{selectedTrackForOptions.is_favorite === 1 ? 'Hapus dari Favorit' : 'Tambah ke Favorit'}</span>
               </button>
 
               <button

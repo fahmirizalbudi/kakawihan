@@ -18,6 +18,7 @@ export interface Track {
   mime_type: string;
   blob_key: string;
   created_at: string;
+  is_favorite: number; // 0 or 1
 }
 
 /**
@@ -57,8 +58,36 @@ export async function getAllTracks(): Promise<Track[]> {
   const db = await getSqliteDb();
   return execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at FROM tracks ORDER BY title ASC'
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks ORDER BY title ASC'
   );
+}
+
+/**
+ * Fetches only tracks marked as favorite.
+ */
+export async function getFavoriteTracks(): Promise<Track[]> {
+  const db = await getSqliteDb();
+  return execQuery<Track>(
+    db,
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE is_favorite = 1 ORDER BY title ASC'
+  );
+}
+
+/**
+ * Toggles the is_favorite flag for a track. Returns the new value (0 or 1).
+ */
+export async function toggleFavorite(trackId: number): Promise<number> {
+  const db = await getSqliteDb();
+  const rows = execQuery<{ is_favorite: number }>(
+    db,
+    'SELECT COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE id = ? LIMIT 1',
+    [trackId]
+  );
+  if (!rows.length) return 0;
+  const newVal = rows[0].is_favorite === 1 ? 0 : 1;
+  db.run('UPDATE tracks SET is_favorite = ? WHERE id = ?', [newVal, trackId]);
+  await saveDbToIdb();
+  return newVal;
 }
 
 /**
@@ -106,7 +135,7 @@ export async function addTrackFile(file: File): Promise<Track> {
   // Retrieve the inserted track
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 
@@ -212,7 +241,7 @@ export async function seedDemoTrack(): Promise<Track> {
 
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 

@@ -12,9 +12,11 @@ import {
   scanAudioFiles as scanFilesService,
   deleteTrack as deleteTrackService,
   seedDemoTrack as seedDemoService,
+  toggleFavorite as toggleFavoriteService,
   type Track,
 } from '../lib/trackService';
 import { getAudioBlob } from '../lib/sqlite';
+import { recordRecentlyPlayed } from '../lib/recentlyPlayedService';
 
 interface AudioPlayerContextType {
   tracks: Track[];
@@ -33,6 +35,7 @@ interface AudioPlayerContextType {
   seedDemoTrack: () => Promise<void>;
   deleteTrack: (id: number) => Promise<void>;
   refreshTracks: () => Promise<void>;
+  toggleFavorite: (trackId: number) => Promise<number>;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -136,6 +139,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       await audio.play();
 
       setCurrentTrack(track);
+
+      // Record to recently played (fire-and-forget)
+      recordRecentlyPlayed(track.id).catch(() => {});
     } catch (err) {
       console.warn('Audio play request interrupted or failed:', err);
     }
@@ -254,6 +260,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     [currentTrack, refreshTracks]
   );
 
+  // Toggle favorite
+  const toggleFavorite = useCallback(
+    async (trackId: number): Promise<number> => {
+      const newVal = await toggleFavoriteService(trackId);
+      await refreshTracks();
+      return newVal;
+    },
+    [refreshTracks]
+  );
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -273,6 +289,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         seedDemoTrack,
         deleteTrack,
         refreshTracks,
+        toggleFavorite,
       }}
     >
       {children}

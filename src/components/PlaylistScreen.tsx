@@ -5,15 +5,20 @@ import {
   ArrowLeft,
   Trash2,
   FolderPlus,
+  FolderOpen,
   ListMusic,
   Check,
   Folder,
   Camera,
   ImagePlus,
+  Heart,
+  Clock,
+  Music,
 } from 'lucide-react';
 import {
   ScreenLayout,
   ScreenHeader,
+  SortBar,
   MiniPlayer,
   BottomNav,
   PlaylistItem,
@@ -30,6 +35,8 @@ import {
   removeTrackFromPlaylist,
   type Playlist,
 } from '../lib/playlistService';
+import { getFavoriteTracks } from '../lib/trackService';
+import { getRecentlyPlayedTracks, getRecentlyPlayedCount } from '../lib/recentlyPlayedService';
 import type { Track } from '../lib/trackService';
 
 interface PlaylistScreenProps {
@@ -56,12 +63,28 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
   const [playlistTracks, setPlaylistTracks] = useState<Track[]>([]);
   const [isLoadingTracks, setIsLoadingTracks] = useState<boolean>(false);
 
+  // Favorites view state
+  const [showFavorites, setShowFavorites] = useState<boolean>(false);
+  const [favoriteTracks, setFavoriteTracks] = useState<Track[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState<boolean>(false);
+  const [favCount, setFavCount] = useState<number>(0);
+
+  // Recently Played view state
+  const [showRecentlyPlayed, setShowRecentlyPlayed] = useState<boolean>(false);
+  const [recentTracks, setRecentTracks] = useState<Track[]>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState<boolean>(false);
+  const [recentCount, setRecentCount] = useState<number>(0);
+
+  // Playlist sort state
+  const [sortAsc, setSortAsc] = useState<boolean>(true);
+
   // Bottom sheet & form state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [newTitle, setNewTitle] = useState<string>('');
   const [newCover, setNewCover] = useState<string>('');
   const [isAddTracksModalOpen, setIsAddTracksModalOpen] = useState<boolean>(false);
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<Track | null>(null);
+  const [selectedPlaylistForOptions, setSelectedPlaylistForOptions] = useState<Playlist | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const coverInputRef = useRef<HTMLInputElement | null>(null);
@@ -83,9 +106,61 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
     }
   }, []);
 
+  // Fetch favorite count for the card subtitle
+  const fetchFavCount = useCallback(async () => {
+    try {
+      const favs = await getFavoriteTracks();
+      setFavCount(favs.length);
+    } catch (err) {
+      console.error('Gagal mengambil favorit:', err);
+    }
+  }, []);
+
+  // Fetch recently played count for the card subtitle
+  const fetchRecentCount = useCallback(async () => {
+    try {
+      const count = await getRecentlyPlayedCount();
+      setRecentCount(count);
+    } catch (err) {
+      console.error('Gagal mengambil recently played:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPlaylists();
-  }, [fetchPlaylists]);
+    fetchFavCount();
+    fetchRecentCount();
+  }, [fetchPlaylists, fetchFavCount, fetchRecentCount]);
+
+  // Open favorites view
+  const openFavorites = async () => {
+    setIsLoadingFavorites(true);
+    setShowFavorites(true);
+    try {
+      const favs = await getFavoriteTracks();
+      setFavoriteTracks(favs);
+      setFavCount(favs.length);
+    } catch (err) {
+      console.error('Gagal memuat favorit:', err);
+    } finally {
+      setIsLoadingFavorites(false);
+    }
+  };
+
+  // Open recently played view
+  const openRecentlyPlayed = async () => {
+    setIsLoadingRecent(true);
+    setShowRecentlyPlayed(true);
+    try {
+      const recent = await getRecentlyPlayedTracks();
+      setRecentTracks(recent);
+      setRecentCount(recent.length);
+    } catch (err) {
+      console.error('Gagal memuat recently played:', err);
+    } finally {
+      setIsLoadingRecent(false);
+    }
+  };
 
   // Load tracks for a selected playlist
   const loadPlaylistTracks = useCallback(async (playlist: Playlist) => {
@@ -185,23 +260,144 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
         />
       )}
 
-      {/* Main View: Playlist List or Playlist Detail */}
-      {!selectedPlaylist ? (
-        /* PLAYLISTS LIST VIEW */
+      {/* Main View: Playlist List, Favorites, Recently Played, or Playlist Detail */}
+      {showFavorites ? (
+        /* ── FAVORITES VIEW ── */
         <>
-          <ScreenHeader
-            title="Playlists"
-            actions={
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="h-8 px-3.5 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[12.5px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Tambah Playlist</span>
-              </button>
-            }
-          />
+          <header className="px-5 pt-[calc(env(safe-area-inset-top,0px)+18px)] pb-2 flex items-center justify-between shrink-0 bg-[#101012] z-20">
+            <button
+              type="button"
+              onClick={() => setShowFavorites(false)}
+              className="text-[#8e8e93] hover:text-white p-1 -ml-1 active:scale-95 transition-all cursor-pointer flex items-center gap-1 text-[13.5px] font-medium"
+            >
+              <ArrowLeft className="w-5 h-5 stroke-[2]" />
+              <span>Kembali</span>
+            </button>
+          </header>
+
+          <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
+            {/* Header info */}
+            <div className="flex items-center gap-4 py-3 shrink-0">
+              <div className="w-14 h-14 rounded-[16px] bg-[#242428] flex items-center justify-center shrink-0">
+                <Heart className="w-7 h-7 text-white stroke-[2]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-white font-semibold text-[18px] tracking-tight leading-tight">Favorites</h2>
+                <p className="text-[#8e8e93] text-[12.5px] mt-1">{favoriteTracks.length} lagu favorit</p>
+              </div>
+            </div>
+
+            {/* Play All */}
+            {favoriteTracks.length > 0 && (
+              <div className="flex items-center gap-2.5 py-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => playTrack(favoriteTracks[0])}
+                  className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                  <span>Putar Semua</span>
+                </button>
+              </div>
+            )}
+
+            {isLoadingFavorites ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#8e8e93] text-sm py-12">
+                <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
+                <span>Memuat favorit...</span>
+              </div>
+            ) : favoriteTracks.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-10 px-4 my-auto select-none">
+                <Heart className="w-12 h-12 text-[#3a3a3e] mb-3 stroke-[1.5]" />
+                <h4 className="text-[15px] font-medium text-white mb-1">Belum ada lagu favorit</h4>
+                <p className="text-[12.5px] text-[#8e8e93]">Tambahkan lagu ke favorit dari menu opsi di tab Tracks</p>
+              </div>
+            ) : (
+              <div className="space-y-1 pt-1">
+                {favoriteTracks.map((track) => (
+                  <TrackItem
+                    key={track.id}
+                    title={track.title}
+                    subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB`}
+                    isActive={currentTrack?.id === track.id}
+                    onClick={() => playTrack(track)}
+                    onOptions={() => {}}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+        </>
+      ) : showRecentlyPlayed ? (
+        /* ── RECENTLY PLAYED VIEW ── */
+        <>
+          <header className="px-5 pt-[calc(env(safe-area-inset-top,0px)+18px)] pb-2 flex items-center justify-between shrink-0 bg-[#101012] z-20">
+            <button
+              type="button"
+              onClick={() => setShowRecentlyPlayed(false)}
+              className="text-[#8e8e93] hover:text-white p-1 -ml-1 active:scale-95 transition-all cursor-pointer flex items-center gap-1 text-[13.5px] font-medium"
+            >
+              <ArrowLeft className="w-5 h-5 stroke-[2]" />
+              <span>Kembali</span>
+            </button>
+          </header>
+
+          <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
+            <div className="flex items-center gap-4 py-3 shrink-0">
+              <div className="w-14 h-14 rounded-[16px] bg-[#242428] flex items-center justify-center shrink-0">
+                <Clock className="w-7 h-7 text-white stroke-[2]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-white font-semibold text-[18px] tracking-tight leading-tight">Recently Played</h2>
+                <p className="text-[#8e8e93] text-[12.5px] mt-1">{recentTracks.length} lagu diputar</p>
+              </div>
+            </div>
+
+            {recentTracks.length > 0 && (
+              <div className="flex items-center gap-2.5 py-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => playTrack(recentTracks[0])}
+                  className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                  <span>Putar Semua</span>
+                </button>
+              </div>
+            )}
+
+            {isLoadingRecent ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#8e8e93] text-sm py-12">
+                <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
+                <span>Memuat riwayat...</span>
+              </div>
+            ) : recentTracks.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-10 px-4 my-auto select-none">
+                <Clock className="w-12 h-12 text-[#3a3a3e] mb-3 stroke-[1.5]" />
+                <h4 className="text-[15px] font-medium text-white mb-1">Belum ada riwayat</h4>
+                <p className="text-[12.5px] text-[#8e8e93]">Lagu yang diputar akan muncul di sini</p>
+              </div>
+            ) : (
+              <div className="space-y-1 pt-1">
+                {recentTracks.map((track) => (
+                  <TrackItem
+                    key={track.id}
+                    title={track.title}
+                    subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB`}
+                    isActive={currentTrack?.id === track.id}
+                    onClick={() => playTrack(track)}
+                    onOptions={() => {}}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+        </>
+      ) : !selectedPlaylist ? (
+        /* ── PLAYLISTS LIST VIEW ── */
+        <>
+          {/* Header — sama seperti TracksScreen: title kiri, Search + Settings kanan */}
+          <ScreenHeader title="Playlists" />
 
           <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
             {isLoading ? (
@@ -209,64 +405,102 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                 <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
                 <span>Memuat playlist...</span>
               </div>
-            ) : playlists.length === 0 ? (
-              /* Empty State - Matching the flat style */
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-8 px-4 my-auto select-none">
-                <div className="w-16 h-20 text-[#3a3a3e] mb-5">
-                  <svg
-                    className="w-full h-full"
-                    viewBox="0 0 64 80"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      d="M10 2C5.58 2 2 5.58 2 10V70C2 74.42 5.58 78 10 78H54C58.42 78 62 74.42 62 70V22L42 2H10Z"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M42 2V22H62"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M32 38V54M24 46H40"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {/* ── Featured Cards: Favorites + Recently Played (2-column grid) ── */}
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  {/* Favorites Card */}
+                  <div>
+                    <div
+                      onClick={openFavorites}
+                      role="button"
+                      tabIndex={0}
+                      className="bg-[#1c1c1e] hover:bg-[#242428] active:scale-[0.98] transition-all rounded-[16px] aspect-square relative flex flex-col items-end justify-between p-3.5 cursor-pointer overflow-hidden"
+                    >
+                      {/* Large decorative bg music note */}
+                      <Music className="absolute -bottom-2 -right-2 w-24 h-24 text-white/[0.07] stroke-[1.5]" />
+                      {/* Content */}
+                      <div />
+                      <span className="text-white font-semibold text-[15px] z-10 leading-tight self-start">
+                        Favorites
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-[#8e8e93] mt-2 px-0.5">
+                      {favCount} tracks
+                    </p>
+                  </div>
+
+                  {/* Recently Played Card */}
+                  <div>
+                    <div
+                      onClick={openRecentlyPlayed}
+                      role="button"
+                      tabIndex={0}
+                      className="bg-[#1c1c1e] hover:bg-[#242428] active:scale-[0.98] transition-all rounded-[16px] aspect-square relative flex flex-col items-end justify-between p-3.5 cursor-pointer overflow-hidden"
+                    >
+                      <Music className="absolute -bottom-2 -right-2 w-24 h-24 text-white/[0.07] stroke-[1.5]" />
+                      <div />
+                      <span className="text-white font-semibold text-[15px] z-10 leading-tight self-start">
+                        Recently Played
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-[#8e8e93] mt-2 px-0.5">
+                      {recentCount} tracks
+                    </p>
+                  </div>
                 </div>
 
-                <h3 className="text-[16.5px] font-medium text-white mb-1 tracking-tight">
-                  Belum Ada Playlist
-                </h3>
-                <p className="text-[13px] text-[#8e8e93] max-w-[260px] leading-relaxed mb-6">
-                  Kelompokkan dan susun lagu-lagu favorit Anda dalam playlist
-                </p>
+                {/* ── SortBar: sort di kiri, "+" di kanan ── */}
+                <SortBar
+                  className="px-0.5 pt-1 pb-0.5"
+                  label={sortAsc ? 'Name' : 'Name'}
+                  onSortClick={() => setSortAsc(!sortAsc)}
+                  rightContent={
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="w-8 h-8 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                      aria-label="Tambah Playlist"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  }
+                />
 
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="h-9 px-5 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Tambah Playlist</span>
-                </button>
-              </div>
-            ) : (
-              /* Playlist List */
-              <div className="space-y-1 pt-1">
-                {playlists.map((item) => (
-                  <PlaylistItem
-                    key={item.id}
-                    title={item.title}
-                    subtitle={`${item.tracks_count || 0} lagu`}
-                    coverImage={item.cover_image || undefined}
-                    onClick={() => loadPlaylistTracks(item)}
-                  />
-                ))}
+                {/* ── Playlist List ── */}
+                {playlists.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center py-6 px-4 select-none">
+                    <h3 className="text-[15px] font-medium text-white mb-1 tracking-tight">Belum Ada Playlist</h3>
+                    <p className="text-[12.5px] text-[#8e8e93] max-w-[240px] leading-relaxed mb-5">
+                      Kelompokkan lagu favorit Anda dalam playlist
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="h-9 px-5 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Tambah Playlist</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {[...playlists].sort((a, b) =>
+                      sortAsc
+                        ? a.title.localeCompare(b.title)
+                        : b.title.localeCompare(a.title)
+                    ).map((item) => (
+                      <PlaylistItem
+                        key={item.id}
+                        title={item.title}
+                        subtitle={`${item.tracks_count || 0} lagu`}
+                        coverImage={item.cover_image || undefined}
+                        onClick={() => loadPlaylistTracks(item)}
+                        onOptions={() => setSelectedPlaylistForOptions(item)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </main>
@@ -283,15 +517,6 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
               <ArrowLeft className="w-5 h-5 stroke-[2]" />
               <span>Kembali</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => handleDelete(selectedPlaylist)}
-              className="text-red-400 hover:text-red-300 p-1.5 active:scale-95 transition-all cursor-pointer"
-              aria-label="Hapus Playlist"
-            >
-              <Trash2 className="w-4 h-4 stroke-[2]" />
-            </button>
           </header>
 
           <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
@@ -304,7 +529,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                   className="w-14 h-14 rounded-[16px] object-cover shrink-0 bg-[#1c1c1e]"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-[16px] bg-[#1c1c1e] text-[#0061FE] flex items-center justify-center shrink-0">
+                <div className="w-14 h-14 rounded-[16px] bg-[#242428] text-white flex items-center justify-center shrink-0">
                   <ListMusic className="w-7 h-7 stroke-[2]" />
                 </div>
               )}
@@ -655,6 +880,72 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
               <button
                 type="button"
                 onClick={() => setSelectedTrackForOptions(null)}
+                className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM SHEET 4: Playlist Options from Playlists List */}
+      {selectedPlaylistForOptions && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
+
+            <div className="flex items-center gap-3.5 mb-5 pb-4">
+              {selectedPlaylistForOptions.cover_image ? (
+                <img
+                  src={selectedPlaylistForOptions.cover_image}
+                  alt={selectedPlaylistForOptions.title}
+                  className="w-11 h-11 rounded-[12px] object-cover shrink-0 bg-[#242428]"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
+                  <ListMusic className="w-5 h-5 stroke-[2]" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <h4 className="text-white font-medium text-[14.5px] truncate tracking-tight">
+                  {selectedPlaylistForOptions.title}
+                </h4>
+                <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
+                  {selectedPlaylistForOptions.tracks_count || 0} lagu tersimpan
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  loadPlaylistTracks(selectedPlaylistForOptions);
+                  setSelectedPlaylistForOptions(null);
+                }}
+                className="w-full h-9 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
+              >
+                <FolderOpen className="w-3.5 h-3.5 stroke-[2]" />
+                <span>Buka Playlist</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const target = selectedPlaylistForOptions;
+                  setSelectedPlaylistForOptions(null);
+                  handleDelete(target);
+                }}
+                className="w-full h-9 rounded-full bg-red-500/15 hover:bg-red-500/20 text-red-400 font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+                <span>Hapus Playlist</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedPlaylistForOptions(null)}
                 className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
               >
                 Tutup

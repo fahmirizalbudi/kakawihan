@@ -1,10 +1,11 @@
-import { ChevronRight, ListMusic } from 'lucide-react';
+import { ChevronRight, ListMusic, MoreHorizontal } from 'lucide-react';
 
 export interface PlaylistItemProps {
   title: string;
   subtitle: string;
   coverImage?: string;
   onClick?: () => void;
+  onOptions?: () => void;
   className?: string;
 }
 
@@ -17,16 +18,20 @@ export function PlaylistItem({
   subtitle,
   coverImage,
   onClick,
+  onOptions,
   className = '',
 }: PlaylistItemProps) {
   return (
     <div
-      onClick={onClick}
-      className={`flex items-center justify-between group active:scale-[0.99] transition-all cursor-pointer py-2 px-1.5 rounded-xl hover:bg-[#18181b] active:bg-[#1c1c1e] ${className}`}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
+      className={`flex items-center justify-between group active:scale-[0.99] transition-all py-2 px-1.5 rounded-xl hover:bg-[#18181b] active:bg-[#1c1c1e] ${className}`}
     >
-      <div className="flex items-center gap-3.5 min-w-0">
+      {/* Left: cover + text — clickable */}
+      <div
+        onClick={onClick}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        className="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer"
+      >
         {coverImage ? (
           <img
             src={coverImage}
@@ -42,13 +47,23 @@ export function PlaylistItem({
           <h3 className="text-white font-medium text-[14.5px] tracking-tight leading-snug group-hover:text-slate-200 transition-colors truncate">
             {title}
           </h3>
-          <p className="text-[#8e8e93] text-[12px] mt-0.5 truncate">
-            {subtitle}
-          </p>
+          <p className="text-[#8e8e93] text-[12px] mt-0.5 truncate">{subtitle}</p>
         </div>
       </div>
 
-      <ChevronRight className="w-4 h-4 text-[#636366] stroke-[2] shrink-0 ml-2" />
+      {/* Right: options (⋯) or chevron */}
+      {onOptions ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOptions(); }}
+          className="p-2 -mr-1 text-[#636366] hover:text-white active:scale-90 transition-all cursor-pointer shrink-0 ml-1"
+          aria-label="Opsi playlist"
+        >
+          <MoreHorizontal className="w-[18px] h-[18px] stroke-[2]" />
+        </button>
+      ) : (
+        <ChevronRight className="w-4 h-4 text-[#636366] stroke-[2] shrink-0 ml-2" />
+      )}
     </div>
   );
 }

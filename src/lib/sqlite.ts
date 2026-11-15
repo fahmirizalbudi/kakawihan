@@ -159,6 +159,22 @@ export async function getSqliteDb(): Promise<Database> {
       );
     `);
 
+    // Migration: add is_favorite column if it doesn't exist yet (non-destructive)
+    try {
+      dbInstance.run(`ALTER TABLE tracks ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0`);
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
+    // Migration: create recently_played table if it doesn't exist yet (non-destructive)
+    dbInstance.run(`
+      CREATE TABLE IF NOT EXISTS recently_played (
+        track_id INTEGER PRIMARY KEY,
+        played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
+      );
+    `);
+
     await saveDbToIdb();
     return dbInstance;
   })();
