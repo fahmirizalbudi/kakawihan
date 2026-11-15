@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS recently_played (
 ## 🚀 2. Panduan Cara Pakai
 
 ### A. Menambahkan File Musik
-1. Di tab **Tracks**, tekan tombol **"Pilih Lagu"** (ikon `+`).
+1. Di tab **Tracks**, tekan tombol **"Pilih Lagu"** (ikon bulat `+` di sebelah kanan filter nama).
 2. Pilih satu atau beberapa file audio sekaligus dari perangkat Anda (`.mp3`, `.wav`, `.m4a`, `.aac`, `.flac`, `.ogg`, `.weba`).
 3. Lagu akan otomatis diproses, durasi dihitung, dan data biner disimpan ke dalam database lokal.
 
