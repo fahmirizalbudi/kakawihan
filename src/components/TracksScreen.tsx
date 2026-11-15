@@ -7,6 +7,7 @@ import {
   FileAudio,
   ListPlus,
   Heart,
+  Search,
 } from 'lucide-react';
 import {
   ScreenLayout,
@@ -45,6 +46,8 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
   } = useAudioPlayer();
 
   const [sortAsc, setSortAsc] = useState<boolean>(true);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<Track | null>(null);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState<boolean>(false);
@@ -117,25 +120,38 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     folderInputRef.current?.click();
   };
 
-  const handleShuffle = () => {
-    if (tracks.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * tracks.length);
-    playTrack(tracks[randomIndex]);
-  };
-
-  const handlePlayAll = () => {
-    if (tracks.length === 0) return;
-    playTrack(tracks[0]);
-  };
-
-  // Sorted tracks
-  const sortedTracks = useMemo(() => {
-    return [...tracks].sort((a, b) =>
+  // Filtered and sorted tracks
+  const displayedTracks = useMemo(() => {
+    let result = tracks;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.artist?.toLowerCase().includes(q) ||
+          t.album?.toLowerCase().includes(q) ||
+          t.file_name.toLowerCase().includes(q)
+      );
+    }
+    return [...result].sort((a, b) =>
       sortAsc
         ? a.title.localeCompare(b.title)
         : b.title.localeCompare(a.title)
     );
-  }, [tracks, sortAsc]);
+  }, [tracks, sortAsc, searchQuery]);
+
+  const handleShuffle = () => {
+    const list = displayedTracks.length > 0 ? displayedTracks : tracks;
+    if (list.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * list.length);
+    playTrack(list[randomIndex]);
+  };
+
+  const handlePlayAll = () => {
+    const list = displayedTracks.length > 0 ? displayedTracks : tracks;
+    if (list.length === 0) return;
+    playTrack(list[0]);
+  };
 
   return (
     <ScreenLayout>
@@ -152,7 +168,17 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
       />
 
       {/* Screen Header */}
-      <ScreenHeader title="Tracks" />
+      <ScreenHeader
+        title="Tracks"
+        isSearchOpen={isSearchOpen}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onToggleSearch={() => {
+          setIsSearchOpen((prev) => !prev);
+          if (isSearchOpen) setSearchQuery('');
+        }}
+        searchPlaceholder="Cari lagu atau artis..."
+      />
 
       {/* Action Row: Scan Folder & Shuffle */}
       <div className="flex items-center gap-2.5 px-5 pt-1 pb-2 shrink-0">
@@ -264,10 +290,21 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
               <span>Scan Folder Lagu</span>
             </button>
           </div>
+        ) : displayedTracks.length === 0 ? (
+          /* Empty Search State */
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-12 px-4 my-auto select-none">
+            <Search className="w-10 h-10 text-[#3a3a3e] mb-3 stroke-[1.5]" />
+            <h4 className="text-[15px] font-medium text-white mb-1">
+              Tidak Ada Hasil
+            </h4>
+            <p className="text-[12.5px] text-[#8e8e93] max-w-[240px]">
+              Tidak ditemukan lagu yang cocok dengan "{searchQuery}"
+            </p>
+          </div>
         ) : (
           /* Track Items List */
           <div className="space-y-1">
-            {sortedTracks.map((track) => (
+            {displayedTracks.map((track) => (
               <TrackItem
                 key={track.id}
                 title={track.title}

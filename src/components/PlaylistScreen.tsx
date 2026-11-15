@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus,
   Play,
@@ -14,6 +14,7 @@ import {
   Heart,
   Clock,
   Music,
+  Search,
 } from 'lucide-react';
 import {
   ScreenLayout,
@@ -75,8 +76,10 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
   const [isLoadingRecent, setIsLoadingRecent] = useState<boolean>(false);
   const [recentCount, setRecentCount] = useState<number>(0);
 
-  // Playlist sort state
+  // Playlist sort & search state
   const [sortAsc, setSortAsc] = useState<boolean>(true);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Bottom sheet & form state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -250,6 +253,22 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
     playTrack(playlistTracks[0]);
   };
 
+  // Filtered and sorted playlists
+  const filteredPlaylists = useMemo(() => {
+    let list = playlists;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+      );
+    }
+    return [...list].sort((a, b) =>
+      sortAsc ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
+    );
+  }, [playlists, sortAsc, searchQuery]);
+
   return (
     <ScreenLayout>
       {/* Toast Notification */}
@@ -396,8 +415,18 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
       ) : !selectedPlaylist ? (
         /* ── PLAYLISTS LIST VIEW ── */
         <>
-          {/* Header — sama seperti TracksScreen: title kiri, Search + Settings kanan */}
-          <ScreenHeader title="Playlists" />
+          {/* Header — sama seperti TracksScreen: title kiri, Search icon kanan */}
+          <ScreenHeader
+            title="Playlists"
+            isSearchOpen={isSearchOpen}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onToggleSearch={() => {
+              setIsSearchOpen((prev) => !prev);
+              if (isSearchOpen) setSearchQuery('');
+            }}
+            searchPlaceholder="Cari playlist..."
+          />
 
           <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
             {isLoading ? (
@@ -408,47 +437,49 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
             ) : (
               <div className="flex flex-col gap-3">
                 {/* ── Featured Cards: Favorites + Recently Played (2-column grid) ── */}
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  {/* Favorites Card */}
-                  <div>
-                    <div
-                      onClick={openFavorites}
-                      role="button"
-                      tabIndex={0}
-                      className="bg-[#1c1c1e] hover:bg-[#242428] active:scale-[0.98] transition-all rounded-[16px] aspect-square relative flex flex-col items-end justify-between p-3.5 cursor-pointer overflow-hidden"
-                    >
-                      {/* Large decorative bg music note */}
-                      <Music className="absolute -bottom-2 -right-2 w-24 h-24 text-white/[0.07] stroke-[1.5]" />
-                      {/* Content */}
-                      <div />
-                      <span className="text-white font-semibold text-[15px] z-10 leading-tight self-start">
-                        Favorites
-                      </span>
+                {!searchQuery.trim() && (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    {/* Favorites Card */}
+                    <div>
+                      <div
+                        onClick={openFavorites}
+                        role="button"
+                        tabIndex={0}
+                        className="bg-[#1c1c1e] hover:bg-[#242428] active:scale-[0.98] transition-all rounded-[16px] aspect-square relative flex flex-col items-end justify-between p-3.5 cursor-pointer overflow-hidden"
+                      >
+                        {/* Large decorative bg music note */}
+                        <Music className="absolute -bottom-2 -right-2 w-24 h-24 text-white/[0.07] stroke-[1.5]" />
+                        {/* Content */}
+                        <div />
+                        <span className="text-white font-semibold text-[15px] z-10 leading-tight self-start">
+                          Favorites
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-[#8e8e93] mt-2 px-0.5">
+                        {favCount} tracks
+                      </p>
                     </div>
-                    <p className="text-[12px] text-[#8e8e93] mt-2 px-0.5">
-                      {favCount} tracks
-                    </p>
-                  </div>
 
-                  {/* Recently Played Card */}
-                  <div>
-                    <div
-                      onClick={openRecentlyPlayed}
-                      role="button"
-                      tabIndex={0}
-                      className="bg-[#1c1c1e] hover:bg-[#242428] active:scale-[0.98] transition-all rounded-[16px] aspect-square relative flex flex-col items-end justify-between p-3.5 cursor-pointer overflow-hidden"
-                    >
-                      <Music className="absolute -bottom-2 -right-2 w-24 h-24 text-white/[0.07] stroke-[1.5]" />
-                      <div />
-                      <span className="text-white font-semibold text-[15px] z-10 leading-tight self-start">
-                        Recently Played
-                      </span>
+                    {/* Recently Played Card */}
+                    <div>
+                      <div
+                        onClick={openRecentlyPlayed}
+                        role="button"
+                        tabIndex={0}
+                        className="bg-[#1c1c1e] hover:bg-[#242428] active:scale-[0.98] transition-all rounded-[16px] aspect-square relative flex flex-col items-end justify-between p-3.5 cursor-pointer overflow-hidden"
+                      >
+                        <Music className="absolute -bottom-2 -right-2 w-24 h-24 text-white/[0.07] stroke-[1.5]" />
+                        <div />
+                        <span className="text-white font-semibold text-[15px] z-10 leading-tight self-start">
+                          Recently Played
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-[#8e8e93] mt-2 px-0.5">
+                        {recentCount} tracks
+                      </p>
                     </div>
-                    <p className="text-[12px] text-[#8e8e93] mt-2 px-0.5">
-                      {recentCount} tracks
-                    </p>
                   </div>
-                </div>
+                )}
 
                 {/* ── SortBar: sort di kiri, "+" di kanan ── */}
                 <SortBar
@@ -483,13 +514,20 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                       <span>Tambah Playlist</span>
                     </button>
                   </div>
+                ) : filteredPlaylists.length === 0 ? (
+                  /* Empty Search State */
+                  <div className="flex-1 flex flex-col items-center justify-center text-center py-12 px-4 my-auto select-none">
+                    <Search className="w-10 h-10 text-[#3a3a3e] mb-3 stroke-[1.5]" />
+                    <h4 className="text-[15px] font-medium text-white mb-1">
+                      Tidak Ada Hasil
+                    </h4>
+                    <p className="text-[12.5px] text-[#8e8e93] max-w-[240px]">
+                      Tidak ditemukan playlist yang cocok dengan "{searchQuery}"
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-1">
-                    {[...playlists].sort((a, b) =>
-                      sortAsc
-                        ? a.title.localeCompare(b.title)
-                        : b.title.localeCompare(a.title)
-                    ).map((item) => (
+                    {filteredPlaylists.map((item) => (
                       <PlaylistItem
                         key={item.id}
                         title={item.title}
