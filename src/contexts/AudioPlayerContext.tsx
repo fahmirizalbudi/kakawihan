@@ -23,6 +23,7 @@ interface AudioPlayerContextType {
   tracks: Track[];
   currentTrack: Track | null;
   isPlaying: boolean;
+  isBuffering: boolean;
   isLoading: boolean;
   isScanning: boolean;
   currentTime: number;
@@ -46,6 +47,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isBuffering, setIsBuffering] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -60,17 +62,23 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     audio.preload = 'auto';
     audioRef.current = audio;
 
-    const onPlay = () => setIsPlaying(true);
+    const onPlay = () => { setIsPlaying(true); setIsBuffering(false); };
     const onPause = () => setIsPlaying(false);
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration || 0);
     const onDurationChange = () => setDuration(audio.duration || 0);
+    const onWaiting = () => setIsBuffering(true);
+    const onCanPlay = () => setIsBuffering(false);
+    const onPlaying = () => setIsBuffering(false);
 
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('durationchange', onDurationChange);
+    audio.addEventListener('waiting', onWaiting);
+    audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener('playing', onPlaying);
 
     return () => {
       audio.removeEventListener('play', onPlay);
@@ -78,6 +86,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('durationchange', onDurationChange);
+      audio.removeEventListener('waiting', onWaiting);
+      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('playing', onPlaying);
       audio.pause();
       if (currentBlobUrlRef.current) {
         URL.revokeObjectURL(currentBlobUrlRef.current);
@@ -99,6 +110,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       currentBlobUrlRef.current = null;
     }
     setIsPlaying(false);
+    setIsBuffering(false);
     setCurrentTrack(null);
     setCurrentTime(0);
     setDuration(0);
@@ -149,7 +161,27 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // 1. Fetch audio blob from IndexedDB
+      // Handle streaming online URL directly
+      if (track.blob_key.startsWith('http://') || track.blob_key.startsWith('https://')) {
+        if (currentBlobUrlRef.current) {
+          URL.revokeObjectURL(currentBlobUrlRef.current);
+          currentBlobUrlRef.current = null;
+        }
+
+        setCurrentTrack(track);
+        setIsBuffering(true);
+
+        audio.src = track.blob_key;
+        audio.load();
+        await audio.play();
+
+        if (track.id > 0) {
+          recordRecentlyPlayed(track.id).catch(() => {});
+        }
+        return;
+      }
+
+      // 1. Fetch audio blob from IndexedDB for local tracks
       const blob = await getAudioBlob(track.blob_key);
       if (!blob) {
         console.error('File audio tidak ditemukan di penyimpanan lokal!');
@@ -172,8 +204,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       setCurrentTrack(track);
 
       // Record to recently played (fire-and-forget)
-      recordRecentlyPlayed(track.id).catch(() => {});
+      if (track.id > 0) {
+        recordRecentlyPlayed(track.id).catch(() => {});
+      }
     } catch (err) {
+      // AbortError is expected when rapidly switching tracks - silently ignore
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
       console.warn('Audio play request interrupted or failed:', err);
     }
   }, [currentTrack]);
@@ -322,6 +360,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         tracks,
         currentTrack,
         isPlaying,
+        isBuffering,
         isLoading,
         isScanning,
         currentTime,

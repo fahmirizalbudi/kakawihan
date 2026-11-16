@@ -24,9 +24,10 @@ import { getAllPlaylists, addTrackToPlaylist, type Playlist } from '../lib/playl
 
 interface TracksScreenProps {
   onSwitchToPlaylists?: () => void;
+  onSwitchToOnline?: () => void;
 }
 
-export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
+export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksScreenProps) {
   const {
     tracks,
     currentTrack,
@@ -434,11 +435,12 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
         onNext={nextTrack}
       />
 
-      {/* Fixed Bottom Navigation (Playlists & Tracks) */}
+      {/* Fixed Bottom Navigation (Playlists, Tracks, Online) */}
       <BottomNav
         activeTab="tracks"
         onChangeTab={(tab) => {
           if (tab === 'playlists') onSwitchToPlaylists?.();
+          if (tab === 'online') onSwitchToOnline?.();
         }}
       />
 

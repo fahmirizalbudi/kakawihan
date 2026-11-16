@@ -42,9 +42,10 @@ import type { Track } from '../lib/trackService';
 
 interface PlaylistScreenProps {
   onSwitchToTracks?: () => void;
+  onSwitchToOnline?: () => void;
 }
 
-export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
+export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistScreenProps) {
   const {
     tracks: allLibraryTracks,
     currentTrack,
@@ -690,11 +691,12 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
         onNext={nextTrack}
       />
 
-      {/* Fixed Bottom Navigation (Playlists & Tracks) */}
+      {/* Fixed Bottom Navigation (Playlists, Tracks, Online) */}
       <BottomNav
         activeTab="playlists"
         onChangeTab={(tab) => {
           if (tab === 'tracks') onSwitchToTracks?.();
+          if (tab === 'online') onSwitchToOnline?.();
         }}
       />
 

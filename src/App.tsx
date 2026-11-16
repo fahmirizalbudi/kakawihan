@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { PlaylistScreen } from './components/PlaylistScreen';
 import { TracksScreen } from './components/TracksScreen';
+import { OnlineSearchScreen } from './components/OnlineSearchScreen';
 import { useMobileDetection } from './hooks/useMobileDetection';
 import { Smartphone, ShieldAlert, QrCode } from 'lucide-react';
 import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
 
 export default function App() {
   const { isMobileDevice } = useMobileDetection();
-  // Default to 'tracks' screen (fokus ke integrasi tracks SQLite dan pemutar lagu)
-  const [currentScreen, setCurrentScreen] = useState<'playlists' | 'tracks'>('tracks');
+  // Navigation tabs: 'playlists' (kiri) | 'tracks' (tengah) | 'online' (kanan)
+  const [currentScreen, setCurrentScreen] = useState<'playlists' | 'tracks' | 'online'>('tracks');
 
   // Strict Mobile Check: JIKA BUKAN PERANGKAT MOBILE, BLOKIR AKSES
   if (!isMobileDevice) {
@@ -78,9 +79,20 @@ export default function App() {
     <AudioPlayerProvider>
       <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] bg-[#101012] text-white overflow-hidden font-['Montserrat',sans-serif]">
         {currentScreen === 'tracks' ? (
-          <TracksScreen onSwitchToPlaylists={() => setCurrentScreen('playlists')} />
+          <TracksScreen
+            onSwitchToPlaylists={() => setCurrentScreen('playlists')}
+            onSwitchToOnline={() => setCurrentScreen('online')}
+          />
+        ) : currentScreen === 'playlists' ? (
+          <PlaylistScreen
+            onSwitchToTracks={() => setCurrentScreen('tracks')}
+            onSwitchToOnline={() => setCurrentScreen('online')}
+          />
         ) : (
-          <PlaylistScreen onSwitchToTracks={() => setCurrentScreen('tracks')} />
+          <OnlineSearchScreen
+            onSwitchToTracks={() => setCurrentScreen('tracks')}
+            onSwitchToPlaylists={() => setCurrentScreen('playlists')}
+          />
         )}
       </main>
     </AudioPlayerProvider>

@@ -1,6 +1,6 @@
-import { Music } from 'lucide-react';
+import { Music, Globe } from 'lucide-react';
 
-export type TabType = 'playlists' | 'tracks';
+export type TabType = 'playlists' | 'tracks' | 'online';
 
 export interface BottomNavProps {
   activeTab: TabType;
@@ -25,7 +25,7 @@ function GridIcon({ active }: { active: boolean }) {
 }
 
 /**
- * Modern flat bottom navigation with 2 tabs: Playlists and Tracks.
+ * Modern flat bottom navigation with 3 tabs: Playlists, Tracks, and Online Search.
  * Sleek, borderless, with active pill indicator.
  */
 export function BottomNav({
@@ -35,7 +35,7 @@ export function BottomNav({
 }: BottomNavProps) {
   return (
     <nav
-      className={`bg-[#121214] px-14 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] flex items-center justify-around shrink-0 z-30 ${className}`}
+      className={`bg-[#121214] px-10 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] flex items-center justify-around shrink-0 z-30 ${className}`}
     >
       {/* Tab: Playlists */}
       <button
@@ -63,6 +63,20 @@ export function BottomNav({
         aria-label="Tracks tab"
       >
         <Music className="w-5 h-5 stroke-[2.2]" />
+      </button>
+
+      {/* Tab: Online Search (disebelah kanan tracks) */}
+      <button
+        type="button"
+        onClick={() => onChangeTab('online')}
+        className={`px-4 py-2 rounded-xl transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
+          activeTab === 'online'
+            ? 'bg-[#242426] text-white'
+            : 'text-[#8e8e93] hover:text-white'
+        }`}
+        aria-label="Online Search tab"
+      >
+        <Globe className="w-5 h-5 stroke-[2.2]" />
       </button>
     </nav>
   );

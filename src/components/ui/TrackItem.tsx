@@ -1,10 +1,12 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Music, MoreVertical, Check } from 'lucide-react';
 
 export interface TrackItemProps {
   title: string;
   subtitle?: string;
+  coverImage?: string;
   isActive?: boolean;
+  isBuffering?: boolean;
   onClick?: () => void;
   onOptions?: () => void;
   onLongPress?: () => void;
@@ -20,7 +22,9 @@ export interface TrackItemProps {
 export function TrackItem({
   title,
   subtitle,
+  coverImage,
   isActive = false,
+  isBuffering = false,
   onClick,
   onOptions,
   onLongPress,
@@ -30,6 +34,7 @@ export function TrackItem({
 }: TrackItemProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressRef = useRef(false);
+  const [imgError, setImgError] = useState(false);
 
   const startPress = () => {
     isLongPressRef.current = false;
@@ -99,14 +104,33 @@ export function TrackItem({
             )}
           </div>
         ) : (
-          <div
-            className={`w-11 h-11 rounded-[12px] flex items-center justify-center shrink-0 transition-colors ${
-              isActive
-                ? 'bg-[#0061FE] text-white'
-                : 'bg-[#1c1c1e] text-[#8e8e93] group-hover:text-white group-hover:bg-[#252528]'
-            }`}
-          >
-            <Music className="w-5 h-5 stroke-[2]" />
+          <div className="relative shrink-0">
+            {coverImage && !imgError ? (
+              <img
+                src={coverImage}
+                alt={title}
+                onError={() => setImgError(true)}
+                className={`w-11 h-11 rounded-[12px] object-cover bg-[#1c1c1e] transition-all ${
+                  isActive ? 'ring-2 ring-[#0061FE]' : ''
+                }`}
+              />
+            ) : (
+              <div
+                className={`w-11 h-11 rounded-[12px] flex items-center justify-center transition-colors ${
+                  isActive
+                    ? 'bg-[#0061FE] text-white'
+                    : 'bg-[#1c1c1e] text-[#8e8e93] group-hover:text-white group-hover:bg-[#252528]'
+                }`}
+              >
+                <Music className="w-5 h-5 stroke-[2]" />
+              </div>
+            )}
+            {/* Buffering spinner overlay */}
+            {isActive && isBuffering && (
+              <div className="absolute inset-0 rounded-[12px] bg-black/60 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              </div>
+            )}
           </div>
         )}
 
