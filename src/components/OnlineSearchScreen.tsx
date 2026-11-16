@@ -3,7 +3,6 @@ import {
   Shuffle,
   Play,
   ListPlus,
-  Download,
   Search,
   Music,
 } from 'lucide-react';
@@ -21,7 +20,6 @@ import {
   searchOnlineTracks,
   getTrendingTracks,
   addOnlineTrackToPlaylist,
-  importOnlineTrack,
   type OnlineTrack,
 } from '../lib/onlineMusicService';
 import { getAllPlaylists, type Playlist } from '../lib/playlistService';
@@ -145,7 +143,21 @@ export function OnlineSearchScreen({
       is_favorite: 0,
     };
 
-    await playTrack(tempTrack);
+    const queue: Track[] = displayedTracks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      artist: t.artist,
+      album: t.album,
+      duration: t.duration,
+      file_name: `${t.title}.m4a`,
+      file_size: 1024 * 1024,
+      mime_type: 'audio/mp4',
+      blob_key: t.previewUrl,
+      created_at: new Date().toISOString(),
+      is_favorite: 0,
+    }));
+
+    await playTrack(tempTrack, queue);
   };
 
   // Shuffle play
@@ -153,22 +165,6 @@ export function OnlineSearchScreen({
     if (displayedTracks.length === 0) return;
     const randomIndex = Math.floor(Math.random() * displayedTracks.length);
     handlePlayOnlineTrack(displayedTracks[randomIndex]);
-  };
-
-  // Save to local tracks collection
-  const handleSaveToCollection = async (onlineTrack: OnlineTrack) => {
-    setSavingTrackId(onlineTrack.id);
-    try {
-      await importOnlineTrack(onlineTrack);
-      await refreshTracks();
-      showToast(`"${onlineTrack.title}" disimpan ke koleksi Tracks`);
-      setSelectedTrackForOptions(null);
-    } catch (err) {
-      console.error('Gagal menyimpan lagu ke koleksi:', err);
-      showToast('Gagal menyimpan lagu ke koleksi');
-    } finally {
-      setSavingTrackId(null);
-    }
   };
 
   // Open playlist selector
@@ -393,16 +389,6 @@ export function OnlineSearchScreen({
               >
                 <ListPlus className="w-3.5 h-3.5 stroke-[2]" />
                 <span>Tambah ke Playlist</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={savingTrackId === selectedTrackForOptions.id}
-                onClick={() => handleSaveToCollection(selectedTrackForOptions)}
-                className="w-full h-9 rounded-full bg-[#252528] hover:bg-[#2e2e32] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Download className="w-3.5 h-3.5 stroke-[2]" />
-                <span>Simpan ke Koleksi Tracks</span>
               </button>
 
               <button

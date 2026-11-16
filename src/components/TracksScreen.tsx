@@ -32,6 +32,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
     tracks,
     currentTrack,
     isPlaying,
+    isBuffering,
     isLoading,
     isScanning,
     currentTime,
@@ -174,8 +175,8 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
   const handleShuffle = () => {
     const list = displayedTracks.length > 0 ? displayedTracks : tracks;
     if (list.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * list.length);
-    playTrack(list[randomIndex]);
+    const shuffled = [...list].sort(() => Math.random() - 0.5);
+    playTrack(shuffled[0], shuffled);
   };
 
   // Selection handlers
@@ -401,13 +402,14 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
                 title={track.title}
                 subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB • ${track.file_name.split('.').pop()?.toUpperCase() || 'AUDIO'}`}
                 isActive={currentTrack?.id === track.id}
+                isBuffering={currentTrack?.id === track.id && isBuffering}
                 isSelectionMode={isSelectionMode}
                 isSelected={selectedIds.has(track.id)}
                 onClick={() => {
                   if (isSelectionMode) {
                     handleToggleSelectTrack(track.id);
                   } else {
-                    playTrack(track);
+                    playTrack(track, displayedTracks);
                   }
                 }}
                 onOptions={() => setSelectedTrackForOptions(track)}
@@ -427,6 +429,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
             : undefined
         }
         isPlaying={isPlaying}
+        isBuffering={isBuffering}
         currentTime={currentTime}
         duration={duration}
         onSeek={seek}

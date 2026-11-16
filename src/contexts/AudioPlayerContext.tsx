@@ -18,6 +18,7 @@ import {
 } from '../lib/trackService';
 import { getAudioBlob } from '../lib/sqlite';
 import { recordRecentlyPlayed } from '../lib/recentlyPlayedService';
+import { DoublyLinkedList, DoublyLinkedListNode } from '../lib/doublyLinkedList';
 
 interface AudioPlayerContextType {
   tracks: Track[];
@@ -29,7 +30,7 @@ interface AudioPlayerContextType {
   currentTime: number;
   duration: number;
   seek: (time: number) => void;
-  playTrack: (track: Track) => Promise<void>;
+  playTrack: (track: Track, customQueue?: Track[]) => Promise<void>;
   togglePlay: () => void;
   nextTrack: () => void;
   prevTrack: () => void;
@@ -55,6 +56,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentBlobUrlRef = useRef<string | null>(null);
+  const queueListRef = useRef<DoublyLinkedList<Track>>(new DoublyLinkedList<Track>());
+  const currentNodeRef = useRef<DoublyLinkedListNode<Track> | null>(null);
 
   // Initialize Audio instance once
   useEffect(() => {
@@ -124,9 +127,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       if (!isInitializedRef.current) {
         isInitializedRef.current = true;
         if (data.length > 0) {
+          queueListRef.current = DoublyLinkedList.fromArray(data);
+          currentNodeRef.current = queueListRef.current.head;
           setCurrentTrack(data[0]);
         }
       } else {
+        // If queue was default library, keep it in sync
+        if (queueListRef.current.size === 0 && data.length > 0) {
+          queueListRef.current = DoublyLinkedList.fromArray(data);
+          currentNodeRef.current = queueListRef.current.head;
+        }
         setCurrentTrack((prev) => {
           if (!prev) return null;
           const stillExists = data.find((t) => t.id === prev.id);
@@ -145,13 +155,36 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     refreshTracks();
   }, [refreshTracks]);
 
-  // Play a specific track
-  const playTrack = useCallback(async (track: Track) => {
+  // Play a specific track (with optional custom playlist/queue)
+  const playTrack = useCallback(async (track: Track, customQueue?: Track[]) => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // 1. Maintain DoublyLinkedList queue and node pointer
+    if (customQueue && customQueue.length > 0) {
+      queueListRef.current = DoublyLinkedList.fromArray(customQueue);
+      currentNodeRef.current =
+        queueListRef.current.find((t) => t.id === track.id || t.blob_key === track.blob_key) ||
+        queueListRef.current.head;
+    } else {
+      let found = queueListRef.current.find(
+        (t) => t.id === track.id || t.blob_key === track.blob_key
+      );
+      if (!found) {
+        queueListRef.current = DoublyLinkedList.fromArray(tracks.length > 0 ? tracks : [track]);
+        found =
+          queueListRef.current.find((t) => t.id === track.id || t.blob_key === track.blob_key) ||
+          queueListRef.current.head;
+      }
+      currentNodeRef.current = found;
+    }
+
     // If same track is already loaded, simply resume
-    if (currentTrack?.id === track.id && audio.src) {
+    if (
+      currentTrack?.id === track.id &&
+      currentTrack?.blob_key === track.blob_key &&
+      audio.src
+    ) {
       try {
         await audio.play();
       } catch (e) {
@@ -214,7 +247,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
       console.warn('Audio play request interrupted or failed:', err);
     }
-  }, [currentTrack]);
+  }, [currentTrack, tracks]);
 
   // Toggle play/pause
   const togglePlay = useCallback(async () => {
@@ -232,6 +265,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           console.warn('Gagal melanjutkan audio:', e);
         }
+      } else if (currentNodeRef.current) {
+        await playTrack(currentNodeRef.current.value);
+      } else if (queueListRef.current.head) {
+        await playTrack(queueListRef.current.head.value);
       } else if (tracks.length > 0) {
         await playTrack(tracks[0]);
       }
@@ -247,25 +284,67 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setCurrentTime(safeTime);
   }, [duration]);
 
-  // Next track
+  // Next track: uses DoublyLinkedList Node traversal.
+  // When reaching the end (tail), stops playback completely and resets progress.
   const nextTrack = useCallback(() => {
-    if (tracks.length === 0) return;
-    const currentIndex = currentTrack
-      ? tracks.findIndex((t) => t.id === currentTrack.id)
-      : -1;
-    const nextIndex = (currentIndex + 1) % tracks.length;
-    playTrack(tracks[nextIndex]);
-  }, [tracks, currentTrack, playTrack]);
+    const currentNode = currentNodeRef.current;
+    if (!currentNode) {
+      if (queueListRef.current.head) {
+        playTrack(queueListRef.current.head.value);
+      }
+      return;
+    }
 
-  // Previous track
+    const nextNode = currentNode.next;
+    if (nextNode) {
+      // Advance to next node in doubly linked list
+      currentNodeRef.current = nextNode;
+      playTrack(nextNode.value);
+    } else {
+      // Reached the end of the playlist / list!
+      // Stop playback and reset to beginning of list so play button resets to start
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      setIsPlaying(false);
+      setIsBuffering(false);
+      setCurrentTime(0);
+
+      // Reset pointer to head so clicking play restarts from the top of the queue
+      if (queueListRef.current.head) {
+        currentNodeRef.current = queueListRef.current.head;
+        setCurrentTrack(queueListRef.current.head.value);
+      }
+    }
+  }, [playTrack]);
+
+  // Previous track: uses DoublyLinkedList Node traversal.
   const prevTrack = useCallback(() => {
-    if (tracks.length === 0) return;
-    const currentIndex = currentTrack
-      ? tracks.findIndex((t) => t.id === currentTrack.id)
-      : -1;
-    const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
-    playTrack(tracks[prevIndex]);
-  }, [tracks, currentTrack, playTrack]);
+    const audio = audioRef.current;
+    if (audio && audio.currentTime > 3) {
+      audio.currentTime = 0;
+      setCurrentTime(0);
+      return;
+    }
+
+    const currentNode = currentNodeRef.current;
+    if (!currentNode) return;
+
+    const prevNode = currentNode.prev;
+    if (prevNode) {
+      // Move to previous node in doubly linked list
+      currentNodeRef.current = prevNode;
+      playTrack(prevNode.value);
+    } else {
+      // At first song (head node), rewind to beginning
+      if (audio) {
+        audio.currentTime = 0;
+        setCurrentTime(0);
+      }
+    }
+  }, [playTrack]);
 
   // Auto-play next track when audio ends
   useEffect(() => {

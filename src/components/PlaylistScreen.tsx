@@ -3,6 +3,9 @@ import {
   Plus,
   Play,
   ArrowLeft,
+  ChevronLeft,
+  MoreHorizontal,
+  Shuffle,
   Trash2,
   FolderPlus,
   FolderOpen,
@@ -50,6 +53,7 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
     tracks: allLibraryTracks,
     currentTrack,
     isPlaying,
+    isBuffering,
     currentTime,
     duration,
     seek,
@@ -87,6 +91,7 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
   const [newTitle, setNewTitle] = useState<string>('');
   const [newCover, setNewCover] = useState<string>('');
   const [isAddTracksModalOpen, setIsAddTracksModalOpen] = useState<boolean>(false);
+  const [isDetailOptionsOpen, setIsDetailOptionsOpen] = useState<boolean>(false);
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<Track | null>(null);
   const [selectedPlaylistForOptions, setSelectedPlaylistForOptions] = useState<Playlist | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -145,6 +150,8 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
           setSelectedTrackForOptions(null);
         } else if (selectedPlaylistForOptions) {
           setSelectedPlaylistForOptions(null);
+        } else if (isDetailOptionsOpen) {
+          setIsDetailOptionsOpen(false);
         } else if (isAddTracksModalOpen) {
           setIsAddTracksModalOpen(false);
         } else if (isCreateModalOpen) {
@@ -159,6 +166,7 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
   }, [
     selectedTrackForOptions,
     selectedPlaylistForOptions,
+    isDetailOptionsOpen,
     isAddTracksModalOpen,
     isCreateModalOpen,
   ]);
@@ -278,7 +286,14 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
   // Play entire playlist
   const handlePlayPlaylistAll = () => {
     if (playlistTracks.length === 0) return;
-    playTrack(playlistTracks[0]);
+    playTrack(playlistTracks[0], playlistTracks);
+  };
+
+  // Shuffle playlist
+  const handleShufflePlaylist = () => {
+    if (playlistTracks.length === 0) return;
+    const shuffled = [...playlistTracks].sort(() => Math.random() - 0.5);
+    playTrack(shuffled[0], shuffled);
   };
 
   // Filtered and sorted playlists
@@ -578,57 +593,90 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
             <button
               type="button"
               onClick={() => setSelectedPlaylist(null)}
-              className="text-[#8e8e93] hover:text-white p-1 -ml-1 active:scale-95 transition-all cursor-pointer flex items-center gap-1 text-[13.5px] font-medium"
+              className="w-8 h-8 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+              aria-label="Kembali"
             >
-              <ArrowLeft className="w-5 h-5 stroke-[2]" />
-              <span>Kembali</span>
+              <ChevronLeft className="w-4.5 h-4.5 stroke-[2.5]" />
+            </button>
+
+            <h1 className="text-white font-semibold text-[17px] tracking-tight">Playlist</h1>
+
+            <button
+              type="button"
+              onClick={() => setIsDetailOptionsOpen(true)}
+              className="w-8 h-8 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+              aria-label="Opsi Playlist"
+            >
+              <MoreHorizontal className="w-4.5 h-4.5 stroke-[2]" />
             </button>
           </header>
 
           <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
-            {/* Playlist Header Card */}
-            <div className="flex items-center gap-4 py-3 shrink-0">
-              {selectedPlaylist.cover_image ? (
-                <img
-                  src={selectedPlaylist.cover_image}
-                  alt={selectedPlaylist.title}
-                  className="w-14 h-14 rounded-[16px] object-cover shrink-0 bg-[#1c1c1e]"
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-[16px] bg-[#242428] text-white flex items-center justify-center shrink-0">
-                  <ListMusic className="w-7 h-7 stroke-[2]" />
-                </div>
-              )}
+            {/* Center Hero: Artwork, Title, Count, Metadata, Action Buttons */}
+            <div className="flex flex-col items-center pt-2 pb-4 shrink-0">
+              <div className="w-44 h-44 rounded-[20px] overflow-hidden shadow-lg bg-[#1c1c1f] flex items-center justify-center relative border border-white/5">
+                {selectedPlaylist.cover_image ? (
+                  <img
+                    src={selectedPlaylist.cover_image}
+                    alt={selectedPlaylist.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-[#242428] text-[#8e8e93]">
+                    <ListMusic className="w-14 h-14 stroke-[1.5] text-[#8e8e93]/70" />
+                  </div>
+                )}
+              </div>
 
-              <div className="min-w-0">
-                <h2 className="text-white font-semibold text-[18px] tracking-tight leading-tight truncate">
-                  {selectedPlaylist.title}
-                </h2>
-                <p className="text-[#8e8e93] text-[12.5px] mt-1">
-                  {playlistTracks.length} lagu tersimpan
-                </p>
+              {/* Playlist Title */}
+              <h2 className="text-white font-semibold text-[18px] tracking-tight text-center mt-3.5 mb-0.5 px-4 truncate max-w-full">
+                {selectedPlaylist.title}
+              </h2>
+
+              {/* Track Count */}
+              <p className="text-[#8e8e93] text-[12px] text-center font-normal">
+                {playlistTracks.length} lagu
+              </p>
+
+              {/* Metadata Subtitle */}
+              <p className="text-[#8e8e93]/70 text-[11px] text-center mt-0.5">
+                {selectedPlaylist.description || 'Playlist dikurasi • Diperbarui baru saja'}
+              </p>
+
+              {/* Action Buttons: Play and Shuffle */}
+              <div className="flex items-center justify-center gap-2.5 mt-3.5 w-full max-w-[280px]">
+                <button
+                  type="button"
+                  onClick={handlePlayPlaylistAll}
+                  disabled={playlistTracks.length === 0}
+                  className="flex-1 h-9 rounded-full bg-white hover:bg-slate-100 text-black font-semibold text-[13px] inline-flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm disabled:opacity-40"
+                >
+                  <Play className="w-3.5 h-3.5 fill-black text-black ml-0.5" />
+                  <span>Play</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleShufflePlaylist}
+                  disabled={playlistTracks.length === 0}
+                  className="flex-1 h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer border border-white/5 disabled:opacity-40"
+                >
+                  <Shuffle className="w-3.5 h-3.5 stroke-[2]" />
+                  <span>Shuffle</span>
+                </button>
               </div>
             </div>
 
-            {/* Action Buttons: Play All & Add Tracks */}
-            <div className="flex items-center gap-2.5 py-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={handlePlayPlaylistAll}
-                disabled={playlistTracks.length === 0}
-                className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 disabled:opacity-40 active:scale-95 transition-all cursor-pointer shadow-sm"
-              >
-                <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
-                <span>Putar Semua</span>
-              </button>
-
+            {/* Tracks Section Header */}
+            <div className="flex items-center justify-between mt-2 mb-2 px-0.5">
+              <h3 className="text-[14px] font-semibold text-white tracking-tight">Tracks</h3>
               <button
                 type="button"
                 onClick={() => setIsAddTracksModalOpen(true)}
-                className="h-9 px-3.5 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                className="h-7 px-3 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#0061FE] text-[12px] font-medium flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
               >
-                <Plus className="w-4 h-4 stroke-[2]" />
-                <span>Tambah Lagu</span>
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Tambah</span>
               </button>
             </div>
 
@@ -639,12 +687,12 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
                 <span>Memuat lagu playlist...</span>
               </div>
             ) : playlistTracks.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-10 px-4 my-auto select-none">
-                <Folder className="w-12 h-12 text-[#3a3a3e] mb-3 stroke-[1.5]" />
-                <h4 className="text-[15px] font-medium text-white mb-1">
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-8 px-4 select-none">
+                <Folder className="w-10 h-10 text-[#3a3a3e] mb-2 stroke-[1.5]" />
+                <h4 className="text-[14.5px] font-medium text-white mb-1">
                   Playlist ini masih kosong
                 </h4>
-                <p className="text-[12.5px] text-[#8e8e93] mb-5">
+                <p className="text-[12px] text-[#8e8e93] mb-4 max-w-[220px]">
                   Tambahkan lagu favorit dari koleksi lokal Anda
                 </p>
                 <button
@@ -657,14 +705,15 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
                 </button>
               </div>
             ) : (
-              <div className="space-y-1 pt-1">
+              <div className="space-y-1 pb-4">
                 {playlistTracks.map((track) => (
                   <TrackItem
                     key={track.id}
                     title={track.title}
-                    subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB`}
+                    subtitle={track.artist ? `${track.artist} • ${(track.file_size / (1024 * 1024)).toFixed(1)} MB` : `${(track.file_size / (1024 * 1024)).toFixed(1)} MB`}
                     isActive={currentTrack?.id === track.id}
-                    onClick={() => playTrack(track)}
+                    isBuffering={currentTrack?.id === track.id && isBuffering}
+                    onClick={() => playTrack(track, playlistTracks)}
                     onOptions={() => setSelectedTrackForOptions(track)}
                   />
                 ))}
@@ -679,10 +728,11 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
         trackTitle={currentTrack ? currentTrack.title : 'Belum ada lagu'}
         subtitle={
           currentTrack
-            ? `${(currentTrack.file_size / (1024 * 1024)).toFixed(1)} MB`
+            ? currentTrack.artist || `${(currentTrack.file_size / (1024 * 1024)).toFixed(1)} MB`
             : undefined
         }
         isPlaying={isPlaying}
+        isBuffering={isBuffering}
         currentTime={currentTime}
         duration={duration}
         onSeek={seek}
@@ -1041,6 +1091,78 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
               <button
                 type="button"
                 onClick={() => setSelectedPlaylistForOptions(null)}
+                className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM SHEET 5: Options inside Playlist Detail */}
+      {isDetailOptionsOpen && selectedPlaylist && (
+        <div
+          onClick={() => setIsDetailOptionsOpen(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl cursor-default"
+          >
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
+
+            <div className="flex items-center gap-3.5 mb-5 pb-4">
+              {selectedPlaylist.cover_image ? (
+                <img
+                  src={selectedPlaylist.cover_image}
+                  alt={selectedPlaylist.title}
+                  className="w-11 h-11 rounded-[12px] object-cover shrink-0 bg-[#242428]"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
+                  <ListMusic className="w-5 h-5 stroke-[2]" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <h4 className="text-white font-medium text-[14.5px] truncate tracking-tight">
+                  {selectedPlaylist.title}
+                </h4>
+                <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
+                  {playlistTracks.length} lagu tersimpan
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDetailOptionsOpen(false);
+                  setIsAddTracksModalOpen(true);
+                }}
+                className="w-full h-9 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Tambah Lagu</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const target = selectedPlaylist;
+                  setIsDetailOptionsOpen(false);
+                  handleDelete(target);
+                }}
+                className="w-full h-9 rounded-full bg-red-500/15 hover:bg-red-500/20 text-red-400 font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+                <span>Hapus Playlist</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDetailOptionsOpen(false)}
                 className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
               >
                 Tutup
