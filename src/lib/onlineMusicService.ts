@@ -193,7 +193,7 @@ export async function importOnlineTrack(
   // 1. Check if track already exists in local tracks (prevent duplicates)
   const existing = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE title = ? AND artist = ? LIMIT 1',
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE title = ? AND artist = ? LIMIT 1',
     [onlineTrack.title, onlineTrack.artist]
   );
   if (existing.length > 0) {
@@ -253,12 +253,11 @@ export async function importOnlineTrack(
   // 3. Insert into SQLite tracks with cover_image
   onProgress?.(92, 'Menyimpan metadata dan sampul...');
   db.run(
-    `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key, cover_image)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tracks (title, artist, duration, file_name, file_size, mime_type, blob_key, cover_image)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       onlineTrack.title,
       onlineTrack.artist,
-      onlineTrack.album,
       onlineTrack.duration,
       fileName,
       fileSize,
@@ -272,7 +271,7 @@ export async function importOnlineTrack(
 
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 

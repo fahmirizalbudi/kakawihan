@@ -167,7 +167,6 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
         (t) =>
           t.title.toLowerCase().includes(q) ||
           t.artist?.toLowerCase().includes(q) ||
-          t.album?.toLowerCase().includes(q) ||
           t.file_name.toLowerCase().includes(q)
       );
     }
@@ -406,7 +405,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
               <TrackItem
                 key={track.id}
                 title={track.title}
-                subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB • ${track.file_name.split('.').pop()?.toUpperCase() || 'AUDIO'}`}
+                subtitle={track.artist || 'Unknown Artist'}
                 coverImage={track.cover_image}
                 isActive={currentTrack?.id === track.id}
                 isBuffering={currentTrack?.id === track.id && isBuffering}
@@ -432,7 +431,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
         trackTitle={currentTrack ? currentTrack.title : 'Belum ada lagu'}
         subtitle={
           currentTrack
-            ? `${(currentTrack.file_size / (1024 * 1024)).toFixed(1)} MB`
+            ? currentTrack.artist || 'Unknown Artist'
             : undefined
         }
         coverImage={currentTrack?.cover_image}
@@ -525,7 +524,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
                   {selectedTrackForOptions.title}
                 </h4>
                 <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
-                  {selectedTrackForOptions.file_name} • {(selectedTrackForOptions.file_size / (1024 * 1024)).toFixed(2)} MB
+                  {selectedTrackForOptions.artist || 'Unknown Artist'}
                 </p>
               </div>
             </div>

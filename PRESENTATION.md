@@ -133,6 +133,8 @@ NULL ◄──┤ Node A    ├────────►┤ Node B    ├─�
 
 ## 4. ENTITY RELATIONSHIP DIAGRAM (ERD)
 
+> File diagram visual interaktif draw.io tersedia di [erd.drawio](file:///home/fahmirizalbudi/Repositories/kakawihan/erd.drawio) (Notasi Chen klasik: Entitas, Relasi Belah Ketupat, Properti Relasi, Oval Atribut, dan Kardinalitas).
+
 Aplikasi menggunakan engine relasional SQLite dengan 4 tabel yang saling terhubung secara terstruktur dan memiliki proteksi integritas data (*Foreign Keys* dengan `ON DELETE CASCADE`).
 
 ```mermaid
@@ -145,7 +147,6 @@ erDiagram
         INTEGER id PK "Auto Increment"
         TEXT title "Judul Lagu"
         TEXT artist "Nama Artis / Penyanyi"
-        TEXT album "Nama Album"
         REAL duration "Durasi dalam detik"
         TEXT file_name "Nama file asli"
         INTEGER file_size "Ukuran file (bytes)"
@@ -186,6 +187,8 @@ erDiagram
 ---
 
 ## 5. FLOWCHART SISTEM & ALUR LOGIKA
+
+> File diagram visual interaktif draw.io tersedia di [flowchart-dll.drawio](file:///home/fahmirizalbudi/Repositories/kakawihan/flowchart-dll.drawio) (Notasi flowchart lengkap dengan rantai pointer node dan border putih minimalis).
 
 ### Flowchart 1: Traversal Pemutaran Lagu dengan Doubly Linked List
 

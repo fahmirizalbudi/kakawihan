@@ -141,7 +141,6 @@ export function OnlineSearchScreen({
       id: onlineTrack.id,
       title: onlineTrack.title,
       artist: onlineTrack.artist,
-      album: onlineTrack.album,
       duration: onlineTrack.duration,
       file_name: `${onlineTrack.title}.m4a`,
       file_size: 1024 * 1024,
@@ -155,7 +154,6 @@ export function OnlineSearchScreen({
       id: t.id,
       title: t.title,
       artist: t.artist,
-      album: t.album,
       duration: t.duration,
       file_name: `${t.title}.m4a`,
       file_size: 1024 * 1024,
@@ -351,7 +349,7 @@ export function OnlineSearchScreen({
               <TrackItem
                 key={track.id}
                 title={track.title}
-                subtitle={`${track.artist} • ${track.album}`}
+                subtitle={track.artist || 'Unknown Artist'}
                 coverImage={track.artworkUrl}
                 isActive={currentTrack?.blob_key === track.previewUrl}
                 isBuffering={currentTrack?.blob_key === track.previewUrl && isBuffering}
@@ -421,7 +419,7 @@ export function OnlineSearchScreen({
                   {selectedTrackForOptions.title}
                 </h4>
                 <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
-                  {selectedTrackForOptions.artist} • {selectedTrackForOptions.album}
+                  {selectedTrackForOptions.artist || 'Unknown Artist'}
                 </p>
               </div>
             </div>

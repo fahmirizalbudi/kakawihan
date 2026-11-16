@@ -11,7 +11,6 @@ export interface Track {
   id: number;
   title: string;
   artist: string;
-  album: string;
   duration: number;
   file_name: string;
   file_size: number;
@@ -59,7 +58,7 @@ export async function getAllTracks(): Promise<Track[]> {
   const db = await getSqliteDb();
   return execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks ORDER BY title ASC'
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks ORDER BY title ASC'
   );
 }
 
@@ -70,7 +69,7 @@ export async function getFavoriteTracks(): Promise<Track[]> {
   const db = await getSqliteDb();
   return execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE is_favorite = 1 ORDER BY title ASC'
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE is_favorite = 1 ORDER BY title ASC'
   );
 }
 
@@ -126,7 +125,7 @@ export async function addTrackFile(file: File): Promise<Track> {
   // Check for duplicate file
   const existing = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE file_name = ? AND file_size = ? LIMIT 1',
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE file_name = ? AND file_size = ? LIMIT 1',
     [file.name, file.size]
   );
   if (existing.length > 0) {
@@ -142,16 +141,14 @@ export async function addTrackFile(file: File): Promise<Track> {
   const duration = await getAudioDuration(file);
   const title = cleanTrackTitle(file.name);
   const artist = 'Local Device';
-  const album = 'Music Storage';
 
   // 3. Insert into SQLite
   db.run(
-    `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tracks (title, artist, duration, file_name, file_size, mime_type, blob_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       title,
       artist,
-      album,
       duration,
       file.name,
       file.size,
@@ -165,7 +162,7 @@ export async function addTrackFile(file: File): Promise<Track> {
   // Retrieve the inserted track
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 
@@ -218,12 +215,11 @@ export async function scanAudioFiles(files: FileList | File[]): Promise<ScanResu
     const title = cleanTrackTitle(file.name);
 
     db.run(
-      `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tracks (title, artist, duration, file_name, file_size, mime_type, blob_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         title,
         'Local Device',
-        'Music Storage',
         duration,
         file.name,
         file.size,
@@ -289,7 +285,7 @@ export async function seedDemoTrack(): Promise<Track> {
   // Check if demo track already exists
   const existing = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE file_name = ? LIMIT 1',
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE file_name = ? LIMIT 1',
     [fileName]
   );
   if (existing.length > 0) {
@@ -305,12 +301,11 @@ export async function seedDemoTrack(): Promise<Track> {
   const title = 'Karatagan Sunda (Demo Chime)';
 
   db.run(
-    `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tracks (title, artist, duration, file_name, file_size, mime_type, blob_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       title,
       'Kakawihan',
-      'Demo Storage',
       duration,
       fileName,
       blob.size,
@@ -323,7 +318,7 @@ export async function seedDemoTrack(): Promise<Track> {
 
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 

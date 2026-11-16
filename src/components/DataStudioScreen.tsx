@@ -76,6 +76,14 @@ export function DataStudioScreen({ onBack }: { onBack: () => void }) {
     try {
       const db = await getSqliteDb();
 
+      // Ensure album column is dropped from previous database versions
+      try {
+        db.run('ALTER TABLE tracks DROP COLUMN album;');
+        await saveDbToIdb();
+      } catch {
+        // Safe to ignore if already dropped
+      }
+
       // Query all user tables
       const tablesResult = db.exec(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
@@ -715,9 +723,14 @@ export function DataStudioScreen({ onBack }: { onBack: () => void }) {
 
                 {/* Relational Flow Diagram Card */}
                 <div className="w-full p-4 sm:p-5 rounded-[20px] bg-[#17171a] border border-white/5 flex flex-col gap-3 shadow-xl">
-                  <span className="text-[#8e8e93] text-[12.5px] font-medium tracking-tight">
-                    Diagram Relasi Antar Tabel (Entity Relationship)
-                  </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-[#8e8e93] text-[12.5px] font-medium tracking-tight">
+                      Diagram Relasi Antar Tabel (Entity Relationship)
+                    </span>
+                    <span className="text-[11px] text-[#0061FE] font-medium">
+                      File Diagram: erd.drawio &amp; flowchart-dll.drawio
+                    </span>
+                  </div>
 
                   <div className="flex flex-wrap items-center justify-center gap-3 py-4 px-3 bg-[#121214] rounded-2xl border border-white/5 text-xs font-mono">
                     <div className="px-4 py-2.5 rounded-xl bg-[#1c1c1e] border border-white/10 text-center">
@@ -727,18 +740,18 @@ export function DataStudioScreen({ onBack }: { onBack: () => void }) {
 
                     <div className="text-[#8e8e93] flex items-center gap-1">
                       <span>1</span>
-                      <span className="text-[#0061FE]">───────</span>
+                      <span className="text-[#0061FE]">◄── [Mempunyai] ──</span>
                       <span>N</span>
                     </div>
 
                     <div className="px-4 py-2.5 rounded-xl bg-[#0061FE]/15 border border-[#0061FE]/40 text-center">
                       <div className="text-[#0061FE] font-semibold text-[13px]">Playlist_Tracks</div>
-                      <div className="text-[10px] text-[#8e8e93]">Tabel Junction (M:N)</div>
+                      <div className="text-[10px] text-[#8e8e93]">Entitas Relasi (M:N)</div>
                     </div>
 
                     <div className="text-[#8e8e93] flex items-center gap-1">
                       <span>N</span>
-                      <span className="text-[#0061FE]">───────</span>
+                      <span className="text-[#0061FE]">── [Mempunyai] ──►</span>
                       <span>1</span>
                     </div>
 
@@ -749,13 +762,13 @@ export function DataStudioScreen({ onBack }: { onBack: () => void }) {
 
                     <div className="text-[#8e8e93] flex items-center gap-1">
                       <span>1</span>
-                      <span className="text-[#0061FE]">───</span>
+                      <span className="text-[#0061FE]">── [Mencatat] ──►</span>
                       <span>1</span>
                     </div>
 
                     <div className="px-4 py-2.5 rounded-xl bg-[#1c1c1e] border border-white/10 text-center">
                       <div className="text-white font-semibold text-[13px]">Recently_Played</div>
-                      <div className="text-[10px] text-[#8e8e93]">Riwayat Putar</div>
+                      <div className="text-[10px] text-[#8e8e93]">1 Entitas</div>
                     </div>
                   </div>
                 </div>

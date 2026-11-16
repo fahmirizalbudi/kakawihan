@@ -130,7 +130,6 @@ export async function getSqliteDb(): Promise<Database> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         artist TEXT DEFAULT 'Unknown Artist',
-        album TEXT DEFAULT 'Unknown Album',
         duration REAL DEFAULT 0,
         file_name TEXT NOT NULL,
         file_size INTEGER NOT NULL,
@@ -174,6 +173,13 @@ export async function getSqliteDb(): Promise<Database> {
       dbInstance.run(`ALTER TABLE tracks ADD COLUMN cover_image TEXT DEFAULT ''`);
     } catch {
       // Column already exists — safe to ignore
+    }
+
+    // Migration: drop album column if it exists in previous database versions
+    try {
+      dbInstance.run(`ALTER TABLE tracks DROP COLUMN album`);
+    } catch {
+      // Column already dropped or doesn't exist — safe to ignore
     }
 
     // Migration: create recently_played table if it doesn't exist yet (non-destructive)

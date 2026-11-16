@@ -25,7 +25,6 @@ describe('SQLite Database Schema & Operations', () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         artist TEXT DEFAULT 'Unknown Artist',
-        album TEXT DEFAULT 'Unknown Album',
         duration REAL DEFAULT 0,
         file_name TEXT NOT NULL,
         file_size INTEGER NOT NULL,
@@ -76,9 +75,9 @@ describe('SQLite Database Schema & Operations', () => {
 
     // Insert track
     db.run(
-      `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key, is_favorite)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ['Mojang Priangan', 'Nano S.', 'Sundanese Classic', 180, 'mojang.mp3', 3500000, 'audio/mp3', 'blob_mojang_1', 1]
+      `INSERT INTO tracks (title, artist, duration, file_name, file_size, mime_type, blob_key, is_favorite)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ['Mojang Priangan', 'Nano S.', 180, 'mojang.mp3', 3500000, 'audio/mp3', 'blob_mojang_1', 1]
     );
 
     const tracks = execQuery<{ id: number; title: string; is_favorite: number }>(

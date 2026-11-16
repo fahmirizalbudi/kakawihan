@@ -70,7 +70,7 @@ export async function getPlaylistTracks(playlistId: number): Promise<Track[]> {
   const db = await getSqliteDb();
   return execQuery<Track>(
     db,
-    `SELECT t.id, t.title, t.artist, t.album, t.duration, t.file_name, t.file_size, t.mime_type, t.blob_key, t.created_at,
+    `SELECT t.id, t.title, t.artist, t.duration, t.file_name, t.file_size, t.mime_type, t.blob_key, t.created_at,
             COALESCE(t.is_favorite, 0) as is_favorite,
             COALESCE(t.cover_image, '') as cover_image
      FROM tracks t
