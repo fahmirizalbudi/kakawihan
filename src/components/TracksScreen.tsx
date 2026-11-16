@@ -252,7 +252,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
           setIsSearchOpen((prev) => !prev);
           if (isSearchOpen) setSearchQuery('');
         }}
-        searchPlaceholder="Cari lagu atau artis..."
+        searchPlaceholder="Cari..."
       />
 
       {/* Floating Modern Toast Notification */}
