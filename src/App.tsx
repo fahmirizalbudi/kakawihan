@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PlaylistScreen } from './components/PlaylistScreen';
 import { TracksScreen } from './components/TracksScreen';
 import { OnlineSearchScreen } from './components/OnlineSearchScreen';
+import { DataStudioScreen } from './components/DataStudioScreen';
 import { useMobileDetection } from './hooks/useMobileDetection';
 import { Smartphone, ShieldAlert, QrCode } from 'lucide-react';
 import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
@@ -11,7 +12,50 @@ export default function App() {
   // Navigation tabs: 'playlists' (kiri) | 'tracks' (tengah) | 'online' (kanan)
   const [currentScreen, setCurrentScreen] = useState<'playlists' | 'tracks' | 'online'>('tracks');
 
-  // Strict Mobile Check: JIKA BUKAN PERANGKAT MOBILE, BLOKIR AKSES
+  // URL Path Router (Rute '/studio' atau '/data-studio' tanpa '?')
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      if (p.includes('/studio') || p.includes('/data-studio') || h.includes('studio')) {
+        return '/studio';
+      }
+    }
+    return '/';
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      if (p.includes('/studio') || p.includes('/data-studio') || h.includes('studio')) {
+        setCurrentPath('/studio');
+      } else {
+        setCurrentPath('/');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  const navigateTo = (path: string) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', path);
+      setCurrentPath(path);
+    }
+  };
+
+  // RUTE KHUSUS: /studio atau /data-studio (Dapat dibuka langsung di Desktop/Laptop untuk presentasi & admin)
+  if (currentPath === '/studio') {
+    return <DataStudioScreen onBack={() => navigateTo('/')} />;
+  }
+
+  // Strict Mobile Check: JIKA BUKAN PERANGKAT MOBILE PADA APLIKASI UTAMA, TAMPILKAN LAYAR QR MOBILE
   if (!isMobileDevice) {
     const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(currentUrl)}`;
