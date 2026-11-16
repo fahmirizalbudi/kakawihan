@@ -31,6 +31,7 @@ describe('SQLite Database Schema & Operations', () => {
         file_size INTEGER NOT NULL,
         mime_type TEXT NOT NULL,
         blob_key TEXT NOT NULL UNIQUE,
+        cover_image TEXT DEFAULT '',
         is_favorite INTEGER NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -120,5 +121,14 @@ describe('SQLite Database Schema & Operations', () => {
     const recents = execQuery<{ track_id: number }>(db, 'SELECT track_id FROM recently_played');
     expect(recents.length).toBe(1);
     expect(recents[0].track_id).toBe(trackId);
+    // Test rename track title
+    db.run('UPDATE tracks SET title = ? WHERE id = ?', ['Mojang Priangan (Remastered)', trackId]);
+    const renamedTrack = execQuery<{ title: string }>(db, 'SELECT title FROM tracks WHERE id = ?', [trackId]);
+    expect(renamedTrack[0].title).toBe('Mojang Priangan (Remastered)');
+
+    // Test rename playlist title
+    db.run('UPDATE playlists SET title = ? WHERE id = ?', ['Koleksi Sunda Favorit', playlistId]);
+    const renamedPl = execQuery<{ title: string }>(db, 'SELECT title FROM playlists WHERE id = ?', [playlistId]);
+    expect(renamedPl[0].title).toBe('Koleksi Sunda Favorit');
   });
 });

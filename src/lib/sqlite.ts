@@ -136,6 +136,7 @@ export async function getSqliteDb(): Promise<Database> {
         file_size INTEGER NOT NULL,
         mime_type TEXT NOT NULL,
         blob_key TEXT NOT NULL UNIQUE,
+        cover_image TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -164,6 +165,13 @@ export async function getSqliteDb(): Promise<Database> {
     // Migration: add is_favorite column if it doesn't exist yet (non-destructive)
     try {
       dbInstance.run(`ALTER TABLE tracks ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0`);
+    } catch {
+      // Column already exists — safe to ignore
+    }
+
+    // Migration: add cover_image column if it doesn't exist yet (non-destructive)
+    try {
+      dbInstance.run(`ALTER TABLE tracks ADD COLUMN cover_image TEXT DEFAULT ''`);
     } catch {
       // Column already exists — safe to ignore
     }

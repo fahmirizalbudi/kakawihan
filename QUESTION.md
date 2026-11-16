@@ -154,18 +154,41 @@ Saat memutar audio dari URL online, ada latensi buffering jaringan sebelum audio
    - Pada `TrackItem`: thumbnail lagu yang aktif menampilkan **spinner overlay** putih berputar (`border-t-white animate-spin`).
    - Pada `MiniPlayer`: tombol play putih menampilkan spinner hitam dan teks status berubah menjadi `"Memuat..."`.
 
+### Q15: Bagaimana cara kerja fitur impor lagu online ke koleksi lokal Tracks dan penyimpanan foto sampulnya?
+**Jawaban:**
+Ketika pengguna memilih opsi **"Tambah ke Tracks"** pada menu lagu online:
+1. Fungsi `importOnlineTrack()` memvalidasi duplikasi lagu terlebih dahulu.
+2. File audio streaming diunduh via `fetch` dan disimpan sebagai binary `Blob` permanen di IndexedDB ObjectStore `audio_blobs`.
+3. URL gambar sampul (`artworkUrl`) disimpan ke dalam kolom baru `cover_image` di tabel SQLite `tracks`.
+4. Lagu tersebut kini berstatus lokal (offline-ready), langsung muncul di tab **Tracks** lengkap dengan gambar albumnya di list lagu dan di `MiniPlayer`.
+
+### Q16: Bagaimana progress bar ditampilkan secara real-time saat mengunduh lagu online ke Tracks atau Playlist?
+**Jawaban:**
+Proses download audio dapat memakan waktu beberapa detik tergantung koneksi internet:
+1. `importOnlineTrack()` menerima callback `onProgress(percent, message)`.
+2. Melalui Web API `ReadableStream` (`res.body.getReader()`), aplikasi membaca chunk byte audio yang diterima dan menghitung persentase secara proporsional terhadap `content-length`.
+3. Di antarmuka pengguna, muncul modal dialog modern di tengah layar dengan sampul lagu, judul, status tahapan (*"Mengunduh audio..."* $\rightarrow$ *"Menyimpan ke IndexedDB..."* $\rightarrow$ *"Menyimpan metadata & sampul..."*), serta bilah progress bar (`bg-[#0061FE]`) dan angka persentase yang bergerak halus hingga 100%.
+
+### Q17: Bagaimana pencegahan duplikasi saat memindahkan/mengimpor lagu online ke koleksi Tracks?
+**Jawaban:**
+Sebelum proses unduhan audio dijalankan, query SQL memeriksa tabel `tracks`:
+```sql
+SELECT id FROM tracks WHERE title = ? AND artist = ? LIMIT 1
+```
+Jika ditemukan kecocokan judul dan artis, proses download dilewati, data tidak diduplikasi, dan sistem menampilkan pesan Toast: `"Lagu sudah ada di koleksi Tracks (tidak diduplikasi)"`.
+
 ---
 
 ## 5. State Management & Audio Playback Lifecycle
 
-### Q15: Bagaimana pemutar audio dikelola secara global di aplikasi?
+### Q18: Bagaimana pemutar audio dikelola secara global di aplikasi?
 **Jawaban:**
 Menggunakan React Context API di `AudioPlayerContext.tsx`:
 - Satu instance `new Audio()` dibuat di dalam `useRef<HTMLAudioElement>` saat mount dan digunakan bersama di seluruh aplikasi.
 - Seluruh event native (`play`, `pause`, `timeupdate`, `loadedmetadata`, `durationchange`, `waiting`, `canplay`, `ended`) dipantau dan disinkronkan ke React state (`isPlaying`, `currentTime`, `duration`, `isBuffering`).
 - Komponen di layar mana pun (`TracksScreen`, `PlaylistScreen`, `OnlineSearchScreen`, `MiniPlayer`) dapat memanggil fungsi `playTrack()`, `togglePlay()`, `nextTrack()`, `prevTrack()`, dan `seek()`.
 
-### Q16: Apa itu `AbortError` pada HTML5 Audio dan bagaimana aplikasi menanganinya?
+### Q19: Apa itu `AbortError` pada HTML5 Audio dan bagaimana aplikasi menanganinya?
 **Jawaban:**
 `AbortError: The play() request was interrupted by a new load request` terjadi ketika pengguna mengklik lagu baru secara beruntun sebelum pemanggilan `audio.play()` dari lagu sebelumnya selesai melakukan proses buffering.
 Aplikasi menangani ini secara elegan di blok `catch`:
@@ -176,7 +199,7 @@ if (err instanceof DOMException && err.name === 'AbortError') {
 ```
 Sehingga konsol browser tetap bersih dari warning yang tidak perlu.
 
-### Q17: Apa yang terjadi jika lagu yang sedang diputar dihapus oleh pengguna?
+### Q20: Apa yang terjadi jika lagu yang sedang diputar dihapus oleh pengguna?
 **Jawaban:**
 Di fungsi `deleteTrack(id)` dan `deleteMultipleTracks(ids)`:
 - Aplikasi memeriksa apakah `currentTrack.id` termasuk dalam lagu yang akan dihapus.
@@ -187,11 +210,18 @@ Di fungsi `deleteTrack(id)` dan `deleteMultipleTracks(ids)`:
 
 ## 6. UI/UX & Desain Sistem
 
-### Q18: Mengapa tombol aksi PLAY dan SHUFFLE diubah dari huruf kapital (uppercase) ke Sentence Case?
+### Q21: Bagaimana fitur pengubahan nama tampilan (display name) lagu dan playlist diimplementasikan?
+**Jawaban:**
+Pengguna dapat mengubah nama lagu maupun nama playlist dengan mudah melalui menu opsi 3-titik:
+1. **Ubah Nama Lagu (Tracks & Playlist):** Membuka bottom sheet modal dengan input auto-focused, lalu mengeksekusi query `UPDATE tracks SET title = ? WHERE id = ?`. Data langsung diperbarui di UI dan disimpan permanen ke IndexedDB.
+2. **Ubah Nama Playlist (Playlists):** Baik dari daftar playlist maupun dari dalam halaman detail playlist, pengguna dapat memilih *"Ubah Nama Playlist"*, mengeksekusi `UPDATE playlists SET title = ? WHERE id = ?`, dan menyinkronkan state `selectedPlaylist` secara real-time.
+3. Form modal mengikuti desain sistem aplikasi (`bg-[#1c1c1f]`, input `bg-[#242428]`, tombol biru simpan `bg-[#0061FE]`, dan tombol batal).
+
+### Q22: Mengapa tombol aksi PLAY dan SHUFFLE diubah dari huruf kapital (uppercase) ke Sentence Case?
 **Jawaban:**
 Penggunaan teks kapital seluruhnya (`uppercase tracking-wider`) membuat teks tampak kaku dan kurang menyatu dengan hierarki tipografi aplikasi yang bernuansa modern minimalis. Mengubahnya menjadi **`Play`** dan **`Shuffle`** membuat tombol lebih bersih, ramah dibaca, dan konsisten dengan tombol aksi lain di aplikasi (seperti "Putar Semua", "Tambah Lagu", dan "Batal").
 
-### Q19: Apa saja aturan konsistensi desain sistem yang dijaga di seluruh aplikasi?
+### Q23: Apa saja aturan konsistensi desain sistem yang dijaga di seluruh aplikasi?
 **Jawaban:**
 - **Background Utama:** `#101012` (Ultra Dark).
 - **Cards & Modals:** `#1c1c1f` (Dark Grey Elevated) dengan radius kelengkungan `rounded-[20px]` atau `rounded-[24px]`.
@@ -205,7 +235,7 @@ Penggunaan teks kapital seluruhnya (`uppercase tracking-wider`) membuat teks tam
 
 ## 7. Pengujian & Kualitas Kode
 
-### Q20: Apa saja pengujian otomatis (Testing) yang sudah disediakan dan bagaimana cara menjalankannya?
+### Q24: Apa saja pengujian otomatis (Testing) yang sudah disediakan dan bagaimana cara menjalankannya?
 **Jawaban:**
 Pengujian otomatis dikonfigurasi menggunakan **Vitest** dengan script `npm test`:
 1. **`doublyLinkedList.test.ts` (6 tests):**

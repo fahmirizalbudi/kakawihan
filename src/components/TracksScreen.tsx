@@ -8,6 +8,7 @@ import {
   Heart,
   Search,
   Plus,
+  Pencil,
 } from 'lucide-react';
 import {
   ScreenLayout,
@@ -19,7 +20,7 @@ import {
   Toast,
 } from './ui';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
-import type { Track } from '../lib/trackService';
+import { type Track, updateTrackTitle } from '../lib/trackService';
 import { getAllPlaylists, addTrackToPlaylist, type Playlist } from '../lib/playlistService';
 
 interface TracksScreenProps {
@@ -45,6 +46,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
     scanAudioFiles,
     deleteTrack,
     deleteMultipleTracks,
+    refreshTracks,
     toggleFavorite,
   } = useAudioPlayer();
 
@@ -52,6 +54,8 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<Track | null>(null);
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [editTrackTitle, setEditTrackTitle] = useState<string>('');
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState<boolean>(false);
   const [availablePlaylists, setAvailablePlaylists] = useState<Playlist[]>([]);
@@ -136,7 +140,9 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (isAddToPlaylistOpen) {
+        if (editingTrack) {
+          setEditingTrack(null);
+        } else if (isAddToPlaylistOpen) {
           setIsAddToPlaylistOpen(false);
         } else if (selectedTrackForOptions) {
           setSelectedTrackForOptions(null);
@@ -150,7 +156,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAddToPlaylistOpen, selectedTrackForOptions, isDeleteConfirmOpen, isSelectionMode]);
+  }, [editingTrack, isAddToPlaylistOpen, selectedTrackForOptions, isDeleteConfirmOpen, isSelectionMode]);
 
   // Filtered and sorted tracks
   const displayedTracks = useMemo(() => {
@@ -401,6 +407,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
                 key={track.id}
                 title={track.title}
                 subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB • ${track.file_name.split('.').pop()?.toUpperCase() || 'AUDIO'}`}
+                coverImage={track.cover_image}
                 isActive={currentTrack?.id === track.id}
                 isBuffering={currentTrack?.id === track.id && isBuffering}
                 isSelectionMode={isSelectionMode}
@@ -428,6 +435,7 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
             ? `${(currentTrack.file_size / (1024 * 1024)).toFixed(1)} MB`
             : undefined
         }
+        coverImage={currentTrack?.cover_image}
         isPlaying={isPlaying}
         isBuffering={isBuffering}
         currentTime={currentTime}
@@ -537,6 +545,19 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
 
               <button
                 type="button"
+                onClick={() => {
+                  setEditingTrack(selectedTrackForOptions);
+                  setEditTrackTitle(selectedTrackForOptions.title);
+                  setSelectedTrackForOptions(null);
+                }}
+                className="w-full h-9 rounded-full bg-[#252528] hover:bg-[#2e2e32] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <Pencil className="w-3.5 h-3.5 stroke-[2]" />
+                <span>Ubah Nama Lagu</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={async () => {
                   const isFav = selectedTrackForOptions.is_favorite === 1;
                   await toggleFavorite(selectedTrackForOptions.id);
@@ -554,6 +575,19 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
                   className={`w-3.5 h-3.5 stroke-[2] ${selectedTrackForOptions.is_favorite === 1 ? 'fill-pink-400' : ''}`}
                 />
                 <span>{selectedTrackForOptions.is_favorite === 1 ? 'Hapus dari Favorit' : 'Tambah ke Favorit'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTrack(selectedTrackForOptions);
+                  setEditTrackTitle(selectedTrackForOptions.title);
+                  setSelectedTrackForOptions(null);
+                }}
+                className="w-full h-9 rounded-full bg-[#252528] hover:bg-[#2e2e32] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <Pencil className="w-3.5 h-3.5 stroke-[2]" />
+                <span>Ubah Nama Lagu</span>
               </button>
 
               <button
@@ -652,6 +686,79 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Track Title Modal */}
+      {editingTrack && (
+        <div
+          onClick={() => setEditingTrack(null)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl cursor-default"
+          >
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5 shrink-0" />
+
+            <div className="flex items-center gap-3.5 mb-5 pb-3">
+              <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
+                <Pencil className="w-5 h-5 stroke-[2]" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-white font-medium text-[14.5px] truncate tracking-tight">
+                  Ubah Nama Lagu
+                </h4>
+                <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
+                  {editingTrack.file_name}
+                </p>
+              </div>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editTrackTitle.trim()) return;
+                await updateTrackTitle(editingTrack.id, editTrackTitle.trim());
+                await refreshTracks();
+                setEditingTrack(null);
+                setScanMessage('Nama lagu berhasil diubah');
+                setTimeout(() => setScanMessage(null), 3000);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-[#8e8e93] text-xs font-medium block mb-1.5">
+                  Judul Lagu
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={editTrackTitle}
+                  onChange={(e) => setEditTrackTitle(e.target.value)}
+                  placeholder="Masukkan judul lagu..."
+                  className="w-full h-10 px-3.5 rounded-xl bg-[#242428] text-white text-[13.5px] placeholder-[#8e8e93] focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={!editTrackTitle.trim()}
+                  className="w-full h-9 rounded-full bg-[#0061FE] hover:bg-[#0052d9] disabled:opacity-40 text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
+                >
+                  <span>Simpan Perubahan</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditingTrack(null)}
+                  className="w-full h-9 rounded-full bg-[#1c1c1e] hover:bg-[#252528] text-[#8e8e93] hover:text-white font-medium text-[13px] active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center"
+                >
+                  Batal
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

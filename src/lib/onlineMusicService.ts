@@ -172,24 +172,37 @@ export async function getTrendingTracks(
   }
 }
 
+export interface ImportResult {
+  track: Track;
+  isDuplicate: boolean;
+}
+
 /**
  * Imports an online track into the local SQLite database and IndexedDB cache.
- * Returns the local Track object.
+ * Includes cover artwork and streams download progress.
+ * Returns the local Track object and whether it was a duplicate.
  */
-export async function importOnlineTrack(onlineTrack: OnlineTrack): Promise<Track> {
+export async function importOnlineTrack(
+  onlineTrack: OnlineTrack,
+  onProgress?: (percent: number, message: string) => void
+): Promise<ImportResult> {
   const db = await getSqliteDb();
 
-  // 1. Check if track already exists in local tracks
+  onProgress?.(10, 'Memeriksa koleksi lokal...');
+
+  // 1. Check if track already exists in local tracks (prevent duplicates)
   const existing = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE title = ? AND artist = ? LIMIT 1',
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE title = ? AND artist = ? LIMIT 1',
     [onlineTrack.title, onlineTrack.artist]
   );
   if (existing.length > 0) {
-    return existing[0];
+    onProgress?.(100, 'Lagu sudah ada di koleksi');
+    return { track: existing[0], isDuplicate: true };
   }
 
-  // 2. Try to download audio for persistent offline caching
+  // 2. Download audio for persistent offline caching with real progress
+  onProgress?.(20, 'Memulai unduhan audio...');
   let blobKey = onlineTrack.previewUrl;
   let fileSize = 1024 * 1024;
   const safeName = onlineTrack.title.replace(/[^\w\s-]/g, '').trim() || 'online-track';
@@ -198,19 +211,50 @@ export async function importOnlineTrack(onlineTrack: OnlineTrack): Promise<Track
   try {
     const res = await fetch(onlineTrack.previewUrl);
     if (res.ok) {
-      const blob = await res.blob();
-      fileSize = blob.size;
-      blobKey = `track_online_${onlineTrack.id}_${Date.now()}`;
-      await saveAudioBlob(blobKey, blob);
+      if (res.body) {
+        const contentLength = Number(res.headers.get('content-length')) || 0;
+        const reader = res.body.getReader();
+        let received = 0;
+        const chunks: Uint8Array[] = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            received += value.length;
+            if (contentLength > 0) {
+              const pct = Math.min(80, Math.round(20 + (received / contentLength) * 60));
+              onProgress?.(pct, `Mengunduh audio (${(received / (1024 * 1024)).toFixed(1)} MB)...`);
+            } else {
+              const pct = Math.min(80, Math.round(20 + Math.min(60, (received / (2 * 1024 * 1024)) * 60)));
+              onProgress?.(pct, `Mengunduh audio (${Math.round(received / 1024)} KB)...`);
+            }
+          }
+        }
+
+        const blob = new Blob(chunks as BlobPart[], { type: 'audio/mp4' });
+        fileSize = blob.size;
+        blobKey = `track_online_${onlineTrack.id}_${Date.now()}`;
+        onProgress?.(85, 'Menyimpan audio ke IndexedDB...');
+        await saveAudioBlob(blobKey, blob);
+      } else {
+        const blob = await res.blob();
+        fileSize = blob.size;
+        blobKey = `track_online_${onlineTrack.id}_${Date.now()}`;
+        onProgress?.(85, 'Menyimpan audio ke IndexedDB...');
+        await saveAudioBlob(blobKey, blob);
+      }
     }
   } catch (e) {
     console.warn('Gagal mengunduh audio ke IndexedDB, menggunakan URL streaming:', e);
   }
 
-  // 3. Insert into SQLite tracks
+  // 3. Insert into SQLite tracks with cover_image
+  onProgress?.(92, 'Menyimpan metadata dan sampul...');
   db.run(
-    `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key, cover_image)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       onlineTrack.title,
       onlineTrack.artist,
@@ -220,6 +264,7 @@ export async function importOnlineTrack(onlineTrack: OnlineTrack): Promise<Track
       fileSize,
       'audio/mp4',
       blobKey,
+      onlineTrack.artworkUrl || '',
     ]
   );
 
@@ -227,11 +272,12 @@ export async function importOnlineTrack(onlineTrack: OnlineTrack): Promise<Track
 
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 
-  return tracks[0];
+  onProgress?.(100, 'Berhasil ditambahkan!');
+  return { track: tracks[0], isDuplicate: false };
 }
 
 /**
@@ -239,9 +285,12 @@ export async function importOnlineTrack(onlineTrack: OnlineTrack): Promise<Track
  */
 export async function addOnlineTrackToPlaylist(
   playlistId: number,
-  onlineTrack: OnlineTrack
-): Promise<{ success: boolean; track: Track }> {
-  const localTrack = await importOnlineTrack(onlineTrack);
-  const success = await addTrackToPlaylist(playlistId, localTrack.id);
-  return { success, track: localTrack };
+  onlineTrack: OnlineTrack,
+  onProgress?: (percent: number, message: string) => void
+): Promise<{ success: boolean; isDuplicateInPlaylist: boolean; track: Track }> {
+  const { track } = await importOnlineTrack(onlineTrack, onProgress);
+  onProgress?.(95, 'Menghubungkan ke playlist...');
+  const success = await addTrackToPlaylist(playlistId, track.id);
+  onProgress?.(100, 'Selesai!');
+  return { success, isDuplicateInPlaylist: !success, track };
 }

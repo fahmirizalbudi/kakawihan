@@ -70,13 +70,27 @@ export async function getPlaylistTracks(playlistId: number): Promise<Track[]> {
   const db = await getSqliteDb();
   return execQuery<Track>(
     db,
-    `SELECT t.id, t.title, t.artist, t.album, t.duration, t.file_name, t.file_size, t.mime_type, t.blob_key, t.created_at
+    `SELECT t.id, t.title, t.artist, t.album, t.duration, t.file_name, t.file_size, t.mime_type, t.blob_key, t.created_at,
+            COALESCE(t.is_favorite, 0) as is_favorite,
+            COALESCE(t.cover_image, '') as cover_image
      FROM tracks t
      INNER JOIN playlist_tracks pt ON t.id = pt.track_id
      WHERE pt.playlist_id = ?
      ORDER BY pt.position ASC, pt.id ASC`,
     [playlistId]
   );
+}
+
+/**
+ * Updates a playlist's display name/title.
+ */
+export async function updatePlaylistTitle(playlistId: number, newTitle: string): Promise<boolean> {
+  const cleanTitle = newTitle.trim();
+  if (!cleanTitle) return false;
+  const db = await getSqliteDb();
+  db.run('UPDATE playlists SET title = ? WHERE id = ?', [cleanTitle, playlistId]);
+  await saveDbToIdb();
+  return true;
 }
 
 /**

@@ -3,6 +3,7 @@ import {
   Shuffle,
   Play,
   ListPlus,
+  FolderPlus,
   Search,
   Music,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import {
   searchOnlineTracks,
   getTrendingTracks,
+  importOnlineTrack,
   addOnlineTrackToPlaylist,
   type OnlineTrack,
 } from '../lib/onlineMusicService';
@@ -59,7 +61,13 @@ export function OnlineSearchScreen({
   const [selectedTrackForOptions, setSelectedTrackForOptions] = useState<OnlineTrack | null>(null);
   const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState<boolean>(false);
   const [availablePlaylists, setAvailablePlaylists] = useState<Playlist[]>([]);
-  const [savingTrackId, setSavingTrackId] = useState<number | null>(null);
+  const [progressData, setProgressData] = useState<{
+    isOpen: boolean;
+    percent: number;
+    message: string;
+    title: string;
+    cover: string;
+  } | null>(null);
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -167,6 +175,41 @@ export function OnlineSearchScreen({
     handlePlayOnlineTrack(displayedTracks[randomIndex]);
   };
 
+  // Save to local tracks collection with progress bar and duplicate check
+  const handleSaveToTracks = async (onlineTrack: OnlineTrack) => {
+    setSelectedTrackForOptions(null);
+    setProgressData({
+      isOpen: true,
+      percent: 10,
+      message: 'Menyiapkan unduhan...',
+      title: onlineTrack.title,
+      cover: onlineTrack.artworkUrl,
+    });
+
+    try {
+      const { isDuplicate } = await importOnlineTrack(
+        onlineTrack,
+        (percent, message) => {
+          setProgressData((prev) => (prev ? { ...prev, percent, message } : null));
+        }
+      );
+
+      await refreshTracks();
+      setTimeout(() => {
+        setProgressData(null);
+        if (isDuplicate) {
+          showToast(`Lagu "${onlineTrack.title}" sudah ada di koleksi Tracks`);
+        } else {
+          showToast(`"${onlineTrack.title}" berhasil disimpan ke Tracks!`);
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Gagal menyimpan lagu ke koleksi:', err);
+      setProgressData(null);
+      showToast('Gagal mengunduh atau menyimpan lagu');
+    }
+  };
+
   // Open playlist selector
   const handleOpenAddToPlaylist = async (onlineTrack: OnlineTrack) => {
     try {
@@ -179,29 +222,43 @@ export function OnlineSearchScreen({
     }
   };
 
-  // Add online track to selected playlist
+  // Add online track to selected playlist with progress bar
   const handleSelectPlaylist = async (playlist: Playlist) => {
     if (!selectedTrackForOptions) return;
-    setSavingTrackId(selectedTrackForOptions.id);
+    const track = selectedTrackForOptions;
+    setIsAddToPlaylistOpen(false);
+    setSelectedTrackForOptions(null);
+
+    setProgressData({
+      isOpen: true,
+      percent: 10,
+      message: 'Menyiapkan...',
+      title: track.title,
+      cover: track.artworkUrl,
+    });
 
     try {
-      const { success } = await addOnlineTrackToPlaylist(
+      const { success, isDuplicateInPlaylist } = await addOnlineTrackToPlaylist(
         playlist.id,
-        selectedTrackForOptions
+        track,
+        (percent, message) => {
+          setProgressData((prev) => (prev ? { ...prev, percent, message } : null));
+        }
       );
-      if (success) {
-        await refreshTracks();
-        showToast(`Lagu ditambahkan ke "${playlist.title}"`);
-        setIsAddToPlaylistOpen(false);
-        setSelectedTrackForOptions(null);
-      } else {
-        showToast('Lagu sudah ada di playlist ini');
-      }
+
+      await refreshTracks();
+      setTimeout(() => {
+        setProgressData(null);
+        if (isDuplicateInPlaylist) {
+          showToast(`Lagu sudah ada di playlist "${playlist.title}"`);
+        } else if (success) {
+          showToast(`Lagu ditambahkan ke "${playlist.title}"`);
+        }
+      }, 500);
     } catch (err) {
       console.error('Gagal menambahkan lagu ke playlist:', err);
+      setProgressData(null);
       showToast('Gagal menambahkan lagu ke playlist');
-    } finally {
-      setSavingTrackId(null);
     }
   };
 
@@ -384,6 +441,15 @@ export function OnlineSearchScreen({
 
               <button
                 type="button"
+                onClick={() => handleSaveToTracks(selectedTrackForOptions)}
+                className="w-full h-9 rounded-full bg-[#252528] hover:bg-[#2e2e32] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <FolderPlus className="w-3.5 h-3.5 stroke-[2]" />
+                <span>Tambah ke Tracks</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleOpenAddToPlaylist(selectedTrackForOptions)}
                 className="w-full h-9 rounded-full bg-[#252528] hover:bg-[#2e2e32] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
               >
@@ -444,9 +510,8 @@ export function OnlineSearchScreen({
                   <button
                     key={pl.id}
                     type="button"
-                    disabled={savingTrackId === selectedTrackForOptions.id}
                     onClick={() => handleSelectPlaylist(pl)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-[#252528] hover:bg-[#2d2d32] active:scale-[0.99] transition-all cursor-pointer text-left disabled:opacity-50"
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-[#252528] hover:bg-[#2d2d32] active:scale-[0.99] transition-all cursor-pointer text-left"
                   >
                     <div className="min-w-0 pr-3">
                       <h4 className="text-white font-medium text-[14px]">{pl.title}</h4>
@@ -457,6 +522,45 @@ export function OnlineSearchScreen({
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Download / Import Progress Modal */}
+      {progressData && progressData.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-5 animate-in fade-in duration-150">
+          <div className="w-full max-w-xs bg-[#1c1c1f] rounded-[24px] p-5 border border-white/10 shadow-2xl flex flex-col items-center text-center">
+            {/* Cover image or music icon */}
+            <div className="w-16 h-16 rounded-[16px] overflow-hidden bg-[#242428] mb-3 flex items-center justify-center shrink-0 shadow-md">
+              {progressData.cover ? (
+                <img
+                  src={progressData.cover}
+                  alt={progressData.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Music className="w-7 h-7 text-[#8e8e93] stroke-[1.5]" />
+              )}
+            </div>
+
+            <h4 className="text-white font-medium text-[14.5px] truncate max-w-[240px] tracking-tight">
+              {progressData.title}
+            </h4>
+            <p className="text-[#8e8e93] text-[12px] mt-0.5 mb-3.5 truncate max-w-[240px]">
+              {progressData.message}
+            </p>
+
+            {/* Progress Bar Container */}
+            <div className="w-full h-2 rounded-full bg-[#242428] overflow-hidden mb-1.5 relative">
+              <div
+                className="h-full bg-[#0061FE] rounded-full transition-all duration-200 ease-out"
+                style={{ width: `${progressData.percent}%` }}
+              />
+            </div>
+
+            <span className="text-[11.5px] text-[#8e8e93] font-medium self-end tabular-nums">
+              {progressData.percent}%
+            </span>
           </div>
         </div>
       )}

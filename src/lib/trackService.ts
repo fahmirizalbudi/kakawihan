@@ -19,6 +19,7 @@ export interface Track {
   blob_key: string;
   created_at: string;
   is_favorite: number; // 0 or 1
+  cover_image?: string;
 }
 
 /**
@@ -58,7 +59,7 @@ export async function getAllTracks(): Promise<Track[]> {
   const db = await getSqliteDb();
   return execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks ORDER BY title ASC'
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks ORDER BY title ASC'
   );
 }
 
@@ -69,8 +70,20 @@ export async function getFavoriteTracks(): Promise<Track[]> {
   const db = await getSqliteDb();
   return execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE is_favorite = 1 ORDER BY title ASC'
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE is_favorite = 1 ORDER BY title ASC'
   );
+}
+
+/**
+ * Updates the display title of a track.
+ */
+export async function updateTrackTitle(trackId: number, newTitle: string): Promise<boolean> {
+  const cleanTitle = newTitle.trim();
+  if (!cleanTitle) return false;
+  const db = await getSqliteDb();
+  db.run('UPDATE tracks SET title = ? WHERE id = ?', [cleanTitle, trackId]);
+  await saveDbToIdb();
+  return true;
 }
 
 /**
@@ -152,7 +165,7 @@ export async function addTrackFile(file: File): Promise<Track> {
   // Retrieve the inserted track
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 
@@ -310,7 +323,7 @@ export async function seedDemoTrack(): Promise<Track> {
 
   const tracks = execQuery<Track>(
     db,
-    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE blob_key = ? LIMIT 1',
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite, COALESCE(cover_image,"") as cover_image FROM tracks WHERE blob_key = ? LIMIT 1',
     [blobKey]
   );
 
