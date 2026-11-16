@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Shuffle,
   Play,
@@ -67,9 +67,13 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
     if (!files || files.length === 0) return;
 
     try {
-      const added = await scanAudioFiles(files);
-      if (added > 0) {
+      const { added, duplicates } = await scanAudioFiles(files);
+      if (added > 0 && duplicates > 0) {
+        setScanMessage(`Berhasil menambahkan ${added} lagu (${duplicates} duplikat dilewati)`);
+      } else if (added > 0) {
         setScanMessage(`Berhasil menambahkan ${added} lagu`);
+      } else if (duplicates > 0) {
+        setScanMessage(`Semua ${duplicates} file yang dipilih sudah ada di koleksi`);
       } else {
         setScanMessage('Tidak ada file audio yang valid.');
       }
@@ -104,9 +108,13 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
           files.push(file);
         }
         if (files.length > 0) {
-          const added = await scanAudioFiles(files);
-          if (added > 0) {
+          const { added, duplicates } = await scanAudioFiles(files);
+          if (added > 0 && duplicates > 0) {
+            setScanMessage(`Berhasil menambahkan ${added} lagu (${duplicates} duplikat dilewati)`);
+          } else if (added > 0) {
             setScanMessage(`Berhasil menambahkan ${added} lagu`);
+          } else if (duplicates > 0) {
+            setScanMessage(`Semua ${duplicates} file yang dipilih sudah ada di koleksi`);
           } else {
             setScanMessage('Tidak ada file audio yang valid.');
           }
@@ -121,6 +129,26 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
 
     fileInputRef.current?.click();
   };
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAddToPlaylistOpen) {
+          setIsAddToPlaylistOpen(false);
+        } else if (selectedTrackForOptions) {
+          setSelectedTrackForOptions(null);
+        } else if (isDeleteConfirmOpen) {
+          setIsDeleteConfirmOpen(false);
+        } else if (isSelectionMode) {
+          setIsSelectionMode(false);
+          setSelectedIds(new Set());
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddToPlaylistOpen, selectedTrackForOptions, isDeleteConfirmOpen, isSelectionMode]);
 
   // Filtered and sorted tracks
   const displayedTracks = useMemo(() => {
@@ -416,8 +444,14 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
 
       {/* Batch Delete Confirmation Modal */}
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+        <div
+          onClick={() => setIsDeleteConfirmOpen(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl cursor-default"
+          >
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
 
             <div className="flex items-center gap-3.5 mb-5 pb-4">
@@ -458,8 +492,14 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
 
       {/* Track Options Modal / Bottom Sheet */}
       {selectedTrackForOptions && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+        <div
+          onClick={() => setSelectedTrackForOptions(null)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl cursor-default"
+          >
             {/* Modal Drag handle */}
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
 
@@ -550,8 +590,14 @@ export function TracksScreen({ onSwitchToPlaylists }: TracksScreenProps) {
 
       {/* Select Playlist Modal */}
       {isAddToPlaylistOpen && selectedTrackForOptions && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl max-h-[75vh] flex flex-col">
+        <div
+          onClick={() => setIsAddToPlaylistOpen(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl max-h-[75vh] flex flex-col cursor-default"
+          >
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-4 shrink-0" />
 
             <div className="flex items-center justify-between pb-3 shrink-0">

@@ -32,7 +32,7 @@ interface AudioPlayerContextType {
   togglePlay: () => void;
   nextTrack: () => void;
   prevTrack: () => void;
-  scanAudioFiles: (files: FileList | File[]) => Promise<number>;
+  scanAudioFiles: (files: FileList | File[]) => Promise<{ added: number; duplicates: number }>;
   seedDemoTrack: () => Promise<void>;
   deleteTrack: (id: number) => Promise<void>;
   deleteMultipleTracks: (ids: number[]) => Promise<void>;
@@ -85,20 +85,48 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const isInitializedRef = useRef<boolean>(false);
+
+  // Stop playback completely and reset player state
+  const stopPlayback = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+    }
+    if (currentBlobUrlRef.current) {
+      URL.revokeObjectURL(currentBlobUrlRef.current);
+      currentBlobUrlRef.current = null;
+    }
+    setIsPlaying(false);
+    setCurrentTrack(null);
+    setCurrentTime(0);
+    setDuration(0);
+  }, []);
+
   // Fetch tracks from SQLite on mount
   const refreshTracks = useCallback(async () => {
     try {
       const data = await getAllTracks();
       setTracks(data);
-      if (data.length > 0 && !currentTrack) {
-        setCurrentTrack(data[0]);
+      if (!isInitializedRef.current) {
+        isInitializedRef.current = true;
+        if (data.length > 0) {
+          setCurrentTrack(data[0]);
+        }
+      } else {
+        setCurrentTrack((prev) => {
+          if (!prev) return null;
+          const stillExists = data.find((t) => t.id === prev.id);
+          return stillExists || null;
+        });
       }
     } catch (err) {
       console.error('Gagal mengambil daftar lagu dari SQLite:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [currentTrack]);
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -216,12 +244,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Scan multiple files from device
   const scanAudioFiles = useCallback(
-    async (files: FileList | File[]): Promise<number> => {
+    async (files: FileList | File[]): Promise<{ added: number; duplicates: number }> => {
       setIsScanning(true);
       try {
-        const count = await scanFilesService(files);
+        const result = await scanFilesService(files);
         await refreshTracks();
-        return count;
+        return result;
       } catch (err) {
         console.error('Gagal memindai file audio:', err);
         throw err;
@@ -251,8 +279,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     async (id: number) => {
       try {
         if (currentTrack?.id === id) {
-          audioRef.current?.pause();
-          setIsPlaying(false);
+          stopPlayback();
         }
         await deleteTrackService(id);
         await refreshTracks();
@@ -260,7 +287,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         console.error('Gagal menghapus lagu:', err);
       }
     },
-    [currentTrack, refreshTracks]
+    [currentTrack, stopPlayback, refreshTracks]
   );
 
   // Delete multiple tracks
@@ -268,9 +295,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     async (ids: number[]) => {
       try {
         if (currentTrack && ids.includes(currentTrack.id)) {
-          audioRef.current?.pause();
-          setIsPlaying(false);
-          setCurrentTrack(null);
+          stopPlayback();
         }
         await deleteMultipleService(ids);
         await refreshTracks();
@@ -278,7 +303,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         console.error('Gagal menghapus beberapa lagu:', err);
       }
     },
-    [currentTrack, refreshTracks]
+    [currentTrack, stopPlayback, refreshTracks]
   );
 
   // Toggle favorite

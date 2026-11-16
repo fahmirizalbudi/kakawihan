@@ -139,6 +139,8 @@ export async function getSqliteDb(): Promise<Database> {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE INDEX IF NOT EXISTS idx_tracks_file ON tracks(file_name, file_size);
+
       CREATE TABLE IF NOT EXISTS playlists (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,

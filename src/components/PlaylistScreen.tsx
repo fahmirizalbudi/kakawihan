@@ -136,6 +136,32 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
     fetchRecentCount();
   }, [fetchPlaylists, fetchFavCount, fetchRecentCount]);
 
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedTrackForOptions) {
+          setSelectedTrackForOptions(null);
+        } else if (selectedPlaylistForOptions) {
+          setSelectedPlaylistForOptions(null);
+        } else if (isAddTracksModalOpen) {
+          setIsAddTracksModalOpen(false);
+        } else if (isCreateModalOpen) {
+          setIsCreateModalOpen(false);
+          setNewTitle('');
+          setNewCover('');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    selectedTrackForOptions,
+    selectedPlaylistForOptions,
+    isAddTracksModalOpen,
+    isCreateModalOpen,
+  ]);
+
   // Open favorites view
   const openFavorites = async () => {
     setIsLoadingFavorites(true);
@@ -626,7 +652,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
                   className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Pilih Lagu</span>
+                  <span>Tambah Lagu</span>
                 </button>
               </div>
             ) : (
@@ -674,8 +700,18 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
 
       {/* BOTTOM SHEET DIALOG: Tambah Playlist (Style sama persis dengan TracksScreen) */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+        <div
+          onClick={() => {
+            setIsCreateModalOpen(false);
+            setNewTitle('');
+            setNewCover('');
+          }}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl cursor-default"
+          >
             {/* Drag handle */}
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5 shrink-0" />
 
@@ -799,8 +835,14 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
 
       {/* BOTTOM SHEET 2: Tambah Lagu ke Playlist */}
       {isAddTracksModalOpen && selectedPlaylist && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl max-h-[80vh] flex flex-col">
+        <div
+          onClick={() => setIsAddTracksModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl max-h-[80vh] flex flex-col cursor-default"
+          >
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-4 shrink-0" />
 
             <div className="flex items-center justify-between pb-3 shrink-0">
@@ -826,7 +868,7 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
             <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pt-2 scrollbar-none">
               {allLibraryTracks.length === 0 ? (
                 <div className="text-center py-8 text-[#8e8e93] text-xs">
-                  Belum ada lagu di library. Silakan pindai folder musik di tab Tracks terlebih dahulu.
+                  Belum ada lagu di koleksi. Silakan pilih file lagu di tab Tracks terlebih dahulu.
                 </div>
               ) : (
                 allLibraryTracks.map((track) => {
@@ -870,8 +912,14 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
 
       {/* BOTTOM SHEET 3: Track Options in Playlist Detail */}
       {selectedTrackForOptions && selectedPlaylist && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+        <div
+          onClick={() => setSelectedTrackForOptions(null)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl cursor-default"
+          >
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
 
             <div className="flex items-center gap-3.5 mb-5 pb-4">
@@ -930,8 +978,14 @@ export function PlaylistScreen({ onSwitchToTracks }: PlaylistScreenProps) {
 
       {/* BOTTOM SHEET 4: Playlist Options from Playlists List */}
       {selectedPlaylistForOptions && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl">
+        <div
+          onClick={() => setSelectedPlaylistForOptions(null)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] shadow-2xl cursor-default"
+          >
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
 
             <div className="flex items-center gap-3.5 mb-5 pb-4">

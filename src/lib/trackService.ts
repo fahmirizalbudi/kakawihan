@@ -98,11 +98,28 @@ export function cleanTrackTitle(fileName: string): string {
   return nameWithoutExt.trim();
 }
 
+export interface ScanResult {
+  added: number;
+  duplicates: number;
+}
+
 /**
  * Add a single audio file into SQLite and IndexedDB.
+ * Skips and returns existing track if already present (duplicate).
  */
 export async function addTrackFile(file: File): Promise<Track> {
   const db = await getSqliteDb();
+
+  // Check for duplicate file
+  const existing = execQuery<Track>(
+    db,
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE file_name = ? AND file_size = ? LIMIT 1',
+    [file.name, file.size]
+  );
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
   const blobKey = `track_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
   // 1. Save blob to IndexedDB
@@ -144,20 +161,43 @@ export async function addTrackFile(file: File): Promise<Track> {
 
 /**
  * Batch scan multiple files from mobile storage / file picker.
+ * Checks for duplicates in the current batch and existing database records.
  */
-export async function scanAudioFiles(files: FileList | File[]): Promise<number> {
+export async function scanAudioFiles(files: FileList | File[]): Promise<ScanResult> {
   const db = await getSqliteDb();
   let addedCount = 0;
+  let duplicateCount = 0;
 
   const fileArray = Array.from(files).filter((file) => {
     // Only accept audio formats
     return (
       file.type.startsWith('audio/') ||
-      /\.(mp3|wav|ogg|m4a|aac|flac|weba)$/i.test(file.name)
+      /\.(mp3|wav|ogg|m4a|aac|flac|weba|opus)$/i.test(file.name)
     );
   });
 
+  const seenBatchKeys = new Set<string>();
+
   for (const file of fileArray) {
+    const fileKey = `${file.name}_${file.size}`;
+    if (seenBatchKeys.has(fileKey)) {
+      duplicateCount++;
+      continue;
+    }
+    seenBatchKeys.add(fileKey);
+
+    // Check if already exists in SQLite database
+    const existing = execQuery<{ id: number }>(
+      db,
+      'SELECT id FROM tracks WHERE file_name = ? AND file_size = ? LIMIT 1',
+      [file.name, file.size]
+    );
+
+    if (existing.length > 0) {
+      duplicateCount++;
+      continue;
+    }
+
     const blobKey = `track_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     await saveAudioBlob(blobKey, file);
 
@@ -186,7 +226,7 @@ export async function scanAudioFiles(files: FileList | File[]): Promise<number> 
     await saveDbToIdb();
   }
 
-  return addedCount;
+  return { added: addedCount, duplicates: duplicateCount };
 }
 
 /**
@@ -230,15 +270,26 @@ export async function deleteMultipleTracks(ids: number[]): Promise<void> {
  * Seeds a built-in Sundanese pentatonic chime audio file for instant testing.
  */
 export async function seedDemoTrack(): Promise<Track> {
-  const blob = generateDemoAudioBlob();
   const db = await getSqliteDb();
+  const fileName = 'karatagan-sunda-demo.wav';
+
+  // Check if demo track already exists
+  const existing = execQuery<Track>(
+    db,
+    'SELECT id, title, artist, album, duration, file_name, file_size, mime_type, blob_key, created_at, COALESCE(is_favorite,0) as is_favorite FROM tracks WHERE file_name = ? LIMIT 1',
+    [fileName]
+  );
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
+  const blob = generateDemoAudioBlob();
   const blobKey = `track_demo_${Date.now()}`;
 
   await saveAudioBlob(blobKey, blob);
   const duration = await getAudioDuration(blob);
 
   const title = 'Karatagan Sunda (Demo Chime)';
-  const fileName = 'karatagan-sunda-demo.wav';
 
   db.run(
     `INSERT INTO tracks (title, artist, album, duration, file_name, file_size, mime_type, blob_key)
