@@ -526,41 +526,50 @@ export function OnlineSearchScreen({
         </div>
       )}
 
-      {/* Download / Import Progress Modal */}
+      {/* Download / Import Progress Bottom Sheet */}
       {progressData && progressData.isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-5 animate-in fade-in duration-150">
-          <div className="w-full max-w-xs bg-[#1c1c1f] rounded-[24px] p-5 border border-white/10 shadow-2xl flex flex-col items-center text-center">
-            {/* Cover image or music icon */}
-            <div className="w-16 h-16 rounded-[16px] overflow-hidden bg-[#242428] mb-3 flex items-center justify-center shrink-0 shadow-md">
-              {progressData.cover ? (
-                <img
-                  src={progressData.cover}
-                  alt={progressData.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Music className="w-7 h-7 text-[#8e8e93] stroke-[1.5]" />
-              )}
-            </div>
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#1c1c1f] rounded-t-[24px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] shadow-2xl cursor-default animate-in slide-in-from-bottom duration-200">
+            {/* Modal Drag handle */}
+            <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5 shrink-0" />
 
-            <h4 className="text-white font-medium text-[14.5px] truncate max-w-[240px] tracking-tight">
-              {progressData.title}
-            </h4>
-            <p className="text-[#8e8e93] text-[12px] mt-0.5 mb-3.5 truncate max-w-[240px]">
-              {progressData.message}
-            </p>
+            <div className="flex items-center gap-3.5 mb-5 pb-2">
+              <div className="relative shrink-0">
+                {progressData.cover ? (
+                  <img
+                    src={progressData.cover}
+                    alt={progressData.title}
+                    className="w-12 h-12 rounded-[12px] object-cover bg-[#242428]"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-[12px] bg-[#242428] flex items-center justify-center text-[#8e8e93]">
+                    <Music className="w-6 h-6 stroke-[1.5]" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-white font-medium text-[15px] truncate tracking-tight">
+                  {progressData.title}
+                </h4>
+                <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
+                  {progressData.message}
+                </p>
+              </div>
+            </div>
 
             {/* Progress Bar Container */}
-            <div className="w-full h-2 rounded-full bg-[#242428] overflow-hidden mb-1.5 relative">
-              <div
-                className="h-full bg-[#0061FE] rounded-full transition-all duration-200 ease-out"
-                style={{ width: `${progressData.percent}%` }}
-              />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#8e8e93]">Mengunduh & Menyimpan</span>
+                <span className="text-white font-medium tabular-nums">{progressData.percent}%</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-[#242428] overflow-hidden relative">
+                <div
+                  className="h-full bg-[#0061FE] rounded-full transition-all duration-200 ease-out"
+                  style={{ width: `${progressData.percent}%` }}
+                />
+              </div>
             </div>
-
-            <span className="text-[11.5px] text-[#8e8e93] font-medium self-end tabular-nums">
-              {progressData.percent}%
-            </span>
           </div>
         </div>
       )}

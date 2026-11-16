@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus,
   Play,
-  ArrowLeft,
   ChevronLeft,
   MoreHorizontal,
   Shuffle,
@@ -67,6 +66,7 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
     togglePlay,
     nextTrack,
     prevTrack,
+    toggleFavorite,
   } = useAudioPlayer();
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -312,6 +312,32 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
     playTrack(shuffled[0], shuffled);
   };
 
+  // Play entire favorites
+  const handlePlayFavoritesAll = () => {
+    if (favoriteTracks.length === 0) return;
+    playTrack(favoriteTracks[0], favoriteTracks);
+  };
+
+  // Shuffle favorites
+  const handleShuffleFavorites = () => {
+    if (favoriteTracks.length === 0) return;
+    const shuffled = [...favoriteTracks].sort(() => Math.random() - 0.5);
+    playTrack(shuffled[0], shuffled);
+  };
+
+  // Play entire recently played
+  const handlePlayRecentlyPlayedAll = () => {
+    if (recentTracks.length === 0) return;
+    playTrack(recentTracks[0], recentTracks);
+  };
+
+  // Shuffle recently played
+  const handleShuffleRecentlyPlayed = () => {
+    if (recentTracks.length === 0) return;
+    const shuffled = [...recentTracks].sort(() => Math.random() - 0.5);
+    playTrack(shuffled[0], shuffled);
+  };
+
   // Filtered and sorted playlists
   const filteredPlaylists = useMemo(() => {
     let list = playlists;
@@ -342,43 +368,75 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
       {showFavorites ? (
         /* ── FAVORITES VIEW ── */
         <>
-          <header className="px-5 pt-[calc(env(safe-area-inset-top,0px)+18px)] pb-2 flex items-center justify-between shrink-0 bg-[#101012] z-20">
+          <header className="px-5 pt-[calc(env(safe-area-inset-top,0px)+18px)] pb-3 flex items-center justify-between shrink-0 bg-[#101012] z-20">
             <button
               type="button"
               onClick={() => setShowFavorites(false)}
-              className="text-[#8e8e93] hover:text-white p-1 -ml-1 active:scale-95 transition-all cursor-pointer flex items-center gap-1 text-[13.5px] font-medium"
+              className="p-1.5 -ml-1.5 text-white hover:text-white/80 active:scale-90 transition-all cursor-pointer"
+              aria-label="Kembali"
             >
-              <ArrowLeft className="w-5 h-5 stroke-[2]" />
-              <span>Kembali</span>
+              <ChevronLeft className="w-6 h-6 stroke-[2.2]" />
             </button>
+
+            <h1 className="text-white font-semibold text-[17px] tracking-tight">Favorites</h1>
+
+            <div className="w-6 h-6" />
           </header>
 
           <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
-            {/* Header info */}
-            <div className="flex items-center gap-4 py-3 shrink-0">
-              <div className="w-14 h-14 rounded-[16px] bg-[#242428] flex items-center justify-center shrink-0">
-                <Heart className="w-7 h-7 text-white stroke-[2]" />
+            {/* Center Hero: Artwork, Title, Count, Metadata, Action Buttons */}
+            <div className="flex flex-col items-center pt-2 pb-5 shrink-0">
+              <div className="w-48 h-48 sm:w-52 sm:h-52 rounded-[22px] overflow-hidden shadow-2xl bg-[#1c1c1f] flex items-center justify-center relative border border-white/5">
+                <div className="w-full h-full flex flex-col items-center justify-center bg-[#242428] text-[#8e8e93]">
+                  <Heart className="w-16 h-16 stroke-[1.5] text-[#8e8e93]/70" />
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-white font-semibold text-[18px] tracking-tight leading-tight">Favorites</h2>
-                <p className="text-[#8e8e93] text-[12.5px] mt-1">{favoriteTracks.length} lagu favorit</p>
+
+              {/* Title */}
+              <h2 className="text-white font-bold text-[20px] tracking-tight text-center mt-4 mb-0.5 px-4 truncate max-w-full">
+                Favorites
+              </h2>
+
+              {/* Track Count */}
+              <p className="text-[#8e8e93] text-[13px] text-center font-normal">
+                {favoriteTracks.length} tracks
+              </p>
+
+              {/* Metadata Subtitle */}
+              <p className="text-[#8e8e93]/75 text-[12px] text-center mt-0.5">
+                Koleksi lagu favorit • Disukai oleh Anda
+              </p>
+
+              {/* Action Buttons: Play and Shuffle */}
+              <div className="flex items-center justify-center gap-3 mt-4 w-full max-w-[280px]">
+                <button
+                  type="button"
+                  onClick={handlePlayFavoritesAll}
+                  disabled={favoriteTracks.length === 0}
+                  className="flex-1 h-10 rounded-full bg-white hover:bg-neutral-200 text-black font-semibold text-[13.5px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm disabled:opacity-40"
+                >
+                  <Play className="w-4 h-4 fill-black text-black ml-0.5" />
+                  <span>Play</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleShuffleFavorites}
+                  disabled={favoriteTracks.length === 0}
+                  className="flex-1 h-10 rounded-full bg-[#1c1c1f] hover:bg-[#252528] text-white font-medium text-[13.5px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-white/10 disabled:opacity-40"
+                >
+                  <Shuffle className="w-4 h-4 stroke-[2]" />
+                  <span>Shuffle</span>
+                </button>
               </div>
             </div>
 
-            {/* Play All */}
-            {favoriteTracks.length > 0 && (
-              <div className="flex items-center gap-2.5 py-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => playTrack(favoriteTracks[0])}
-                  className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
-                >
-                  <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
-                  <span>Putar Semua</span>
-                </button>
-              </div>
-            )}
+            {/* Tracks Section Header */}
+            <div className="flex items-center justify-between mt-3 mb-2 px-1">
+              <h3 className="text-[17px] font-bold text-white tracking-tight">Tracks</h3>
+            </div>
 
+            {/* Tracks List */}
             {isLoadingFavorites ? (
               <div className="flex-1 flex flex-col items-center justify-center text-[#8e8e93] text-sm py-12">
                 <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
@@ -391,17 +449,121 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
                 <p className="text-[12.5px] text-[#8e8e93]">Tambahkan lagu ke favorit dari menu opsi di tab Tracks</p>
               </div>
             ) : (
-              <div className="space-y-1 pt-1">
-                {favoriteTracks.map((track) => (
-                  <TrackItem
-                    key={track.id}
-                    title={track.title}
-                    subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB`}
-                    isActive={currentTrack?.id === track.id}
-                    onClick={() => playTrack(track)}
-                    onOptions={() => {}}
-                  />
-                ))}
+              <div className="space-y-1.5 pb-4">
+                {favoriteTracks.map((track) => {
+                  const isActive = currentTrack?.id === track.id;
+                  if (isActive) {
+                    return (
+                      <div
+                        key={track.id}
+                        className="bg-[#1c1c1f] rounded-[16px] p-2.5 px-3 flex items-center justify-between transition-all shadow-sm border border-white/5 my-1"
+                      >
+                        <div
+                          className="flex items-center gap-3 min-w-0 mr-2 flex-1 cursor-pointer"
+                          onClick={() => playTrack(track, favoriteTracks)}
+                        >
+                          <div className="relative shrink-0">
+                            {track.cover_image ? (
+                              <img
+                                src={track.cover_image}
+                                alt={track.title}
+                                className="w-11 h-11 rounded-[10px] object-cover bg-[#242428]"
+                              />
+                            ) : (
+                              <div className="w-11 h-11 rounded-[10px] bg-[#242428] flex items-center justify-center text-white">
+                                <Music className="w-5 h-5 stroke-[2]" />
+                              </div>
+                            )}
+                            {isBuffering && (
+                              <div className="absolute inset-0 rounded-[10px] bg-black/60 flex items-center justify-center">
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-white font-medium text-[14px] truncate block tracking-tight">
+                              {track.title}
+                            </span>
+                            {track.artist && (
+                              <span className="text-[#8e8e93] text-[11.5px] truncate block mt-0.5">
+                                {track.artist}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              prevTrack();
+                            }}
+                            className="p-1.5 text-white/80 hover:text-white active:scale-90 transition-all cursor-pointer"
+                            aria-label="Lagu sebelumnya"
+                          >
+                            <SkipBack className="w-4 h-4 fill-current" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePlay();
+                            }}
+                            disabled={isBuffering}
+                            className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform cursor-pointer hover:bg-slate-100 shadow-sm disabled:opacity-80"
+                            aria-label={isPlaying ? 'Pause' : 'Play'}
+                          >
+                            {isBuffering ? (
+                              <div className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                            ) : isPlaying ? (
+                              <Pause className="w-3.5 h-3.5 fill-black text-black" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 fill-black text-black ml-0.5" />
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              nextTrack();
+                            }}
+                            className="p-1.5 text-white/80 hover:text-white active:scale-90 transition-all cursor-pointer"
+                            aria-label="Lagu berikutnya"
+                          >
+                            <SkipForward className="w-4 h-4 fill-current" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTrackForOptions(track);
+                            }}
+                            className="p-1.5 text-[#8e8e93] hover:text-white active:scale-90 transition-all cursor-pointer ml-0.5"
+                            aria-label="Opsi lagu"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <TrackItem
+                      key={track.id}
+                      title={track.title}
+                      subtitle={track.artist || undefined}
+                      coverImage={track.cover_image}
+                      isActive={false}
+                      onClick={() => playTrack(track, favoriteTracks)}
+                      onOptions={() => setSelectedTrackForOptions(track)}
+                    />
+                  );
+                })}
               </div>
             )}
           </main>
@@ -409,41 +571,75 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
       ) : showRecentlyPlayed ? (
         /* ── RECENTLY PLAYED VIEW ── */
         <>
-          <header className="px-5 pt-[calc(env(safe-area-inset-top,0px)+18px)] pb-2 flex items-center justify-between shrink-0 bg-[#101012] z-20">
+          <header className="px-5 pt-[calc(env(safe-area-inset-top,0px)+18px)] pb-3 flex items-center justify-between shrink-0 bg-[#101012] z-20">
             <button
               type="button"
               onClick={() => setShowRecentlyPlayed(false)}
-              className="text-[#8e8e93] hover:text-white p-1 -ml-1 active:scale-95 transition-all cursor-pointer flex items-center gap-1 text-[13.5px] font-medium"
+              className="p-1.5 -ml-1.5 text-white hover:text-white/80 active:scale-90 transition-all cursor-pointer"
+              aria-label="Kembali"
             >
-              <ArrowLeft className="w-5 h-5 stroke-[2]" />
-              <span>Kembali</span>
+              <ChevronLeft className="w-6 h-6 stroke-[2.2]" />
             </button>
+
+            <h1 className="text-white font-semibold text-[17px] tracking-tight">Recently Played</h1>
+
+            <div className="w-6 h-6" />
           </header>
 
           <main className="flex-1 min-h-0 overflow-y-auto px-5 pb-3 overscroll-contain scrollbar-none flex flex-col">
-            <div className="flex items-center gap-4 py-3 shrink-0">
-              <div className="w-14 h-14 rounded-[16px] bg-[#242428] flex items-center justify-center shrink-0">
-                <Clock className="w-7 h-7 text-white stroke-[2]" />
+            {/* Center Hero: Artwork, Title, Count, Metadata, Action Buttons */}
+            <div className="flex flex-col items-center pt-2 pb-5 shrink-0">
+              <div className="w-48 h-48 sm:w-52 sm:h-52 rounded-[22px] overflow-hidden shadow-2xl bg-[#1c1c1f] flex items-center justify-center relative border border-white/5">
+                <div className="w-full h-full flex flex-col items-center justify-center bg-[#242428] text-[#8e8e93]">
+                  <Clock className="w-16 h-16 stroke-[1.5] text-[#8e8e93]/70" />
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-white font-semibold text-[18px] tracking-tight leading-tight">Recently Played</h2>
-                <p className="text-[#8e8e93] text-[12.5px] mt-1">{recentTracks.length} lagu diputar</p>
+
+              {/* Title */}
+              <h2 className="text-white font-bold text-[20px] tracking-tight text-center mt-4 mb-0.5 px-4 truncate max-w-full">
+                Recently Played
+              </h2>
+
+              {/* Track Count */}
+              <p className="text-[#8e8e93] text-[13px] text-center font-normal">
+                {recentTracks.length} tracks
+              </p>
+
+              {/* Metadata Subtitle */}
+              <p className="text-[#8e8e93]/75 text-[12px] text-center mt-0.5">
+                Riwayat pemutaran terakhir • Terakhir diputar
+              </p>
+
+              {/* Action Buttons: Play and Shuffle */}
+              <div className="flex items-center justify-center gap-3 mt-4 w-full max-w-[280px]">
+                <button
+                  type="button"
+                  onClick={handlePlayRecentlyPlayedAll}
+                  disabled={recentTracks.length === 0}
+                  className="flex-1 h-10 rounded-full bg-white hover:bg-neutral-200 text-black font-semibold text-[13.5px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm disabled:opacity-40"
+                >
+                  <Play className="w-4 h-4 fill-black text-black ml-0.5" />
+                  <span>Play</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleShuffleRecentlyPlayed}
+                  disabled={recentTracks.length === 0}
+                  className="flex-1 h-10 rounded-full bg-[#1c1c1f] hover:bg-[#252528] text-white font-medium text-[13.5px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-white/10 disabled:opacity-40"
+                >
+                  <Shuffle className="w-4 h-4 stroke-[2]" />
+                  <span>Shuffle</span>
+                </button>
               </div>
             </div>
 
-            {recentTracks.length > 0 && (
-              <div className="flex items-center gap-2.5 py-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => playTrack(recentTracks[0])}
-                  className="h-9 px-4 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
-                >
-                  <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
-                  <span>Putar Semua</span>
-                </button>
-              </div>
-            )}
+            {/* Tracks Section Header */}
+            <div className="flex items-center justify-between mt-3 mb-2 px-1">
+              <h3 className="text-[17px] font-bold text-white tracking-tight">Tracks</h3>
+            </div>
 
+            {/* Tracks List */}
             {isLoadingRecent ? (
               <div className="flex-1 flex flex-col items-center justify-center text-[#8e8e93] text-sm py-12">
                 <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
@@ -456,17 +652,121 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
                 <p className="text-[12.5px] text-[#8e8e93]">Lagu yang diputar akan muncul di sini</p>
               </div>
             ) : (
-              <div className="space-y-1 pt-1">
-                {recentTracks.map((track) => (
-                  <TrackItem
-                    key={track.id}
-                    title={track.title}
-                    subtitle={`${(track.file_size / (1024 * 1024)).toFixed(1)} MB`}
-                    isActive={currentTrack?.id === track.id}
-                    onClick={() => playTrack(track)}
-                    onOptions={() => {}}
-                  />
-                ))}
+              <div className="space-y-1.5 pb-4">
+                {recentTracks.map((track) => {
+                  const isActive = currentTrack?.id === track.id;
+                  if (isActive) {
+                    return (
+                      <div
+                        key={track.id}
+                        className="bg-[#1c1c1f] rounded-[16px] p-2.5 px-3 flex items-center justify-between transition-all shadow-sm border border-white/5 my-1"
+                      >
+                        <div
+                          className="flex items-center gap-3 min-w-0 mr-2 flex-1 cursor-pointer"
+                          onClick={() => playTrack(track, recentTracks)}
+                        >
+                          <div className="relative shrink-0">
+                            {track.cover_image ? (
+                              <img
+                                src={track.cover_image}
+                                alt={track.title}
+                                className="w-11 h-11 rounded-[10px] object-cover bg-[#242428]"
+                              />
+                            ) : (
+                              <div className="w-11 h-11 rounded-[10px] bg-[#242428] flex items-center justify-center text-white">
+                                <Music className="w-5 h-5 stroke-[2]" />
+                              </div>
+                            )}
+                            {isBuffering && (
+                              <div className="absolute inset-0 rounded-[10px] bg-black/60 flex items-center justify-center">
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-white font-medium text-[14px] truncate block tracking-tight">
+                              {track.title}
+                            </span>
+                            {track.artist && (
+                              <span className="text-[#8e8e93] text-[11.5px] truncate block mt-0.5">
+                                {track.artist}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              prevTrack();
+                            }}
+                            className="p-1.5 text-white/80 hover:text-white active:scale-90 transition-all cursor-pointer"
+                            aria-label="Lagu sebelumnya"
+                          >
+                            <SkipBack className="w-4 h-4 fill-current" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePlay();
+                            }}
+                            disabled={isBuffering}
+                            className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform cursor-pointer hover:bg-slate-100 shadow-sm disabled:opacity-80"
+                            aria-label={isPlaying ? 'Pause' : 'Play'}
+                          >
+                            {isBuffering ? (
+                              <div className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                            ) : isPlaying ? (
+                              <Pause className="w-3.5 h-3.5 fill-black text-black" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 fill-black text-black ml-0.5" />
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              nextTrack();
+                            }}
+                            className="p-1.5 text-white/80 hover:text-white active:scale-90 transition-all cursor-pointer"
+                            aria-label="Lagu berikutnya"
+                          >
+                            <SkipForward className="w-4 h-4 fill-current" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTrackForOptions(track);
+                            }}
+                            className="p-1.5 text-[#8e8e93] hover:text-white active:scale-90 transition-all cursor-pointer ml-0.5"
+                            aria-label="Opsi lagu"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <TrackItem
+                      key={track.id}
+                      title={track.title}
+                      subtitle={track.artist || undefined}
+                      coverImage={track.cover_image}
+                      isActive={false}
+                      onClick={() => playTrack(track, recentTracks)}
+                      onOptions={() => setSelectedTrackForOptions(track)}
+                    />
+                  );
+                })}
               </div>
             )}
           </main>
@@ -842,8 +1142,10 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
         </>
       )}
 
-      {/* Mini Player with Seeker Slider: Render when not in playlist detail or when playing track is not currently in playlist list */}
-      {(!selectedPlaylist || !playlistTracks.some((t) => t.id === currentTrack?.id)) && (
+      {/* Mini Player with Seeker Slider: Render when not in detail view or when playing track is not currently in the active view's list */}
+      {(!((selectedPlaylist && playlistTracks.some((t) => t.id === currentTrack?.id)) ||
+        (showFavorites && favoriteTracks.some((t) => t.id === currentTrack?.id)) ||
+        (showRecentlyPlayed && recentTracks.some((t) => t.id === currentTrack?.id)))) && (
         <MiniPlayer
           trackTitle={currentTrack ? currentTrack.title : 'Belum ada lagu'}
           subtitle={
@@ -1097,15 +1399,28 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
             <div className="w-10 h-1 bg-[#3a3a3e] rounded-full mx-auto mb-5" />
 
             <div className="flex items-center gap-3.5 mb-5 pb-4">
-              <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
-                <ListMusic className="w-5 h-5 stroke-[2]" />
+              <div className="relative shrink-0">
+                {selectedTrackForOptions.cover_image ? (
+                  <img
+                    src={selectedTrackForOptions.cover_image}
+                    alt={selectedTrackForOptions.title}
+                    className="w-11 h-11 rounded-[12px] object-cover bg-[#242428]"
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-[12px] bg-[#242428] flex items-center justify-center text-white shrink-0">
+                    <Music className="w-5 h-5 stroke-[2]" />
+                  </div>
+                )}
               </div>
               <div className="min-w-0">
                 <h4 className="text-white font-medium text-[14.5px] truncate tracking-tight">
                   {selectedTrackForOptions.title}
                 </h4>
                 <p className="text-[#8e8e93] text-xs mt-0.5 truncate">
-                  {selectedPlaylist.title}
+                  {selectedTrackForOptions.artist ||
+                    (selectedPlaylist
+                      ? selectedPlaylist.title
+                      : `${(selectedTrackForOptions.file_size / (1024 * 1024)).toFixed(1)} MB`)}
                 </p>
               </div>
             </div>
@@ -1114,7 +1429,14 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
               <button
                 type="button"
                 onClick={() => {
-                  playTrack(selectedTrackForOptions);
+                  const queue = selectedPlaylist
+                    ? playlistTracks
+                    : showFavorites
+                    ? favoriteTracks
+                    : showRecentlyPlayed
+                    ? recentTracks
+                    : undefined;
+                  playTrack(selectedTrackForOptions, queue);
                   setSelectedTrackForOptions(null);
                 }}
                 className="w-full h-9 rounded-full bg-[#0061FE] hover:bg-[#0052d9] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-sm"
@@ -1136,20 +1458,41 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
                 <span>Ubah Nama Lagu</span>
               </button>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  await removeTrackFromPlaylist(selectedPlaylist.id, selectedTrackForOptions.id);
-                  setPlaylistTracks(playlistTracks.filter((t) => t.id !== selectedTrackForOptions.id));
-                  await fetchPlaylists();
-                  setSelectedTrackForOptions(null);
-                  showToast('Lagu dihapus dari playlist');
-                }}
-                className="w-full h-9 rounded-full bg-red-500/15 hover:bg-red-500/20 text-red-400 font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus dari Playlist Ini</span>
-              </button>
+              {/* Remove from playlist (only inside a playlist) */}
+              {selectedPlaylist && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await removeTrackFromPlaylist(selectedPlaylist.id, selectedTrackForOptions.id);
+                    setPlaylistTracks(playlistTracks.filter((t) => t.id !== selectedTrackForOptions.id));
+                    await fetchPlaylists();
+                    setSelectedTrackForOptions(null);
+                    showToast('Lagu dihapus dari playlist');
+                  }}
+                  className="w-full h-9 rounded-full bg-red-500/15 hover:bg-red-500/20 text-red-400 font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus dari Playlist Ini</span>
+                </button>
+              )}
+
+              {/* Remove from favorites (only inside favorites view) */}
+              {showFavorites && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await toggleFavorite(selectedTrackForOptions.id);
+                    setFavoriteTracks((prev) => prev.filter((t) => t.id !== selectedTrackForOptions.id));
+                    setFavCount((c) => Math.max(0, c - 1));
+                    setSelectedTrackForOptions(null);
+                    showToast('Lagu dihapus dari favorit');
+                  }}
+                  className="w-full h-9 rounded-full bg-red-500/15 hover:bg-red-500/20 text-red-400 font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Heart className="w-3.5 h-3.5 fill-red-400 text-red-400" />
+                  <span>Hapus dari Favorit</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -1442,6 +1785,14 @@ export function PlaylistScreen({ onSwitchToTracks, onSwitchToOnline }: PlaylistS
                 await updateTrackTitle(editingTrack.id, editTrackTitle.trim());
                 if (selectedPlaylist) {
                   await loadPlaylistTracks(selectedPlaylist);
+                }
+                if (showFavorites) {
+                  const favs = await getFavoriteTracks();
+                  setFavoriteTracks(favs);
+                }
+                if (showRecentlyPlayed) {
+                  const recents = await getRecentlyPlayedTracks();
+                  setRecentTracks(recents);
                 }
                 setEditingTrack(null);
                 showToast('Nama lagu berhasil diubah');

@@ -579,19 +579,6 @@ export function TracksScreen({ onSwitchToPlaylists, onSwitchToOnline }: TracksSc
 
               <button
                 type="button"
-                onClick={() => {
-                  setEditingTrack(selectedTrackForOptions);
-                  setEditTrackTitle(selectedTrackForOptions.title);
-                  setSelectedTrackForOptions(null);
-                }}
-                className="w-full h-9 rounded-full bg-[#252528] hover:bg-[#2e2e32] text-white font-medium text-[13px] inline-flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
-              >
-                <Pencil className="w-3.5 h-3.5 stroke-[2]" />
-                <span>Ubah Nama Lagu</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={async () => {
                   const lists = await getAllPlaylists();
                   setAvailablePlaylists(lists);
